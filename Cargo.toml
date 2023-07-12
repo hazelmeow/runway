@@ -1,0 +1,20 @@
+[package]
+name = "runway"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.71"
+blake3 = "1.4.1"
+clap = { version = "4.3.11", features = ["derive", "env"] }
+clap-verbosity-flag = "2.0.1"
+debug-ignore = "1.0.5"
+globwalk = "0.8.1"
+log = "0.4.19"
+pretty_env_logger = "0.5.0"
+rbxcloud = "0.5.0"
+secrecy = "0.8.0"
+serde = { version = "1.0.171", features = ["derive", "rc"] }
+thiserror = "1.0.43"
+tokio = { version = "1.29.1", features = ["macros", "rt", "fs"] }
+toml = "0.7.6"
