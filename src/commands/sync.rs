@@ -113,12 +113,7 @@ impl SyncSession {
         let prev_manifest = match Manifest::read_from_folder(config.root_path()) {
             Ok(m) => m,
             Err(e) => {
-                if e.is_not_found() {
-                    log::info!("Manifest not found, creating new");
-                    Manifest::default()
-                } else {
-                    return Err(e.into());
-                }
+                return Err(e.into());
             }
         };
 
@@ -276,7 +271,7 @@ impl SyncSession {
             })
             .collect();
 
-        manifest.write_to_folder(self.config.root_path())?;
+        manifest.write(&self.config, self.config.root_path())?;
 
         log::debug!("Wrote manifest to {}", self.config.root_path().display());
 

@@ -30,7 +30,7 @@ pub struct Config {
     pub file_path: PathBuf,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TargetType {
     Local,
