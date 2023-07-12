@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    path::{Path, MAIN_SEPARATOR},
+    path::{Path, PathBuf, MAIN_SEPARATOR},
     sync::Arc,
 };
 
@@ -23,6 +23,17 @@ impl AssetIdent {
         let displayed = replace_slashes(displayed);
 
         AssetIdent(displayed.into())
+    }
+
+    pub fn with_cache_bust(&self, cb: &str) -> PathBuf {
+        let mut p: PathBuf = self.to_string().into();
+        let mut file_name = p.file_stem().unwrap_or_default().to_owned();
+        file_name.push("-");
+        file_name.push(cb);
+        file_name.push(".");
+        file_name.push(p.extension().unwrap_or_default());
+        p.set_file_name(file_name);
+        p
     }
 }
 

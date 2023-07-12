@@ -2,6 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     fs,
     path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use globwalk::{DirEntry, GlobWalkerBuilder};
@@ -311,6 +312,15 @@ impl SyncStrategy for LocalSyncStrategy {
 
         log::debug!("Performing local sync for target '{target_key}'");
 
+        // Append the current system time to the filename in Studio's content folder
+        // so the new image is always used.
+        let system_time = SystemTime::now();
+        let timestamp = system_time
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .to_string();
+
         let mut base_path = PathBuf::from("runway");
         base_path.push(session.config.name.clone());
 
@@ -324,7 +334,7 @@ impl SyncStrategy for LocalSyncStrategy {
             &session.target,
         ) {
             let result: Result<(), SyncError> = (|| {
-                let asset_path = base_path.join(ident.to_string());
+                let asset_path = base_path.join(ident.with_cache_bust(&timestamp));
                 let full_path = self.content_path.join(&asset_path);
 
                 log::debug!("Syncing {}", &ident);
