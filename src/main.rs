@@ -9,7 +9,7 @@ mod asset_ident;
 mod cli;
 mod commands;
 mod config;
-mod manifest;
+mod state;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {

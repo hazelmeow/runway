@@ -49,11 +49,11 @@ impl TargetType {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(from = "IntermediateTarget")]
 pub struct TargetConfig {
-    /// Unique identifier for this target used in CLI and manifest. If omitted,
+    /// Unique identifier for this target used in the CLI and state files. If omitted,
     /// it defaults to the value of `target`. If the same target is used more than once,
     /// keys will need to be manually assigned (e.g. `staging` and `production`).
     ///
-    /// Changing a target's `key` without manually updating the manifest would cause
+    /// Changing a target's `key` without manually updating the state files would cause
     /// all previous upload results to that target to be lost.
     pub key: String,
 

@@ -45,7 +45,7 @@ pub struct SyncOptions {
     #[arg(short, long)]
     pub target: String,
 
-    /// Ignore previous manifest and resync everything.
+    /// Ignore previous state and resync everything.
     #[arg(short, long)]
     pub force: bool,
 }

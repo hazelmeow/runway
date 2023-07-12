@@ -18,7 +18,7 @@ use crate::{
     asset_ident::{replace_slashes, AssetIdent},
     cli::SyncOptions,
     config::{Config, ConfigError, TargetConfig, TargetType},
-    manifest::{AssetState, Manifest, ManifestError, TargetState},
+    state::{AssetState, State, StateError, TargetState},
 };
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ struct Asset {
 struct SyncSession {
     config: Config,
     target: TargetConfig,
-    prev_manifest: Manifest,
+    prev_state: State,
 
     force_sync: bool,
 
@@ -95,7 +95,7 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
 
     session.find_assets()?;
     session.perform_sync(strategy)?;
-    session.write_manifest()?;
+    session.write_state()?;
 
     if session.errors.is_empty() {
         Ok(())
@@ -110,7 +110,7 @@ impl SyncSession {
     fn new(options: SyncOptions, config: Config, target: TargetConfig) -> Result<Self, SyncError> {
         log::info!("Starting sync for target '{}'", target.key);
 
-        let prev_manifest = match Manifest::read_from_folder(config.root_path()) {
+        let prev_state = match State::read_from_folder(config.root_path()) {
             Ok(m) => m,
             Err(e) => {
                 return Err(e.into());
@@ -119,7 +119,7 @@ impl SyncSession {
 
         Ok(SyncSession {
             config,
-            prev_manifest,
+            prev_state,
             target,
             force_sync: options.force,
             assets: BTreeMap::new(),
@@ -145,7 +145,7 @@ impl SyncSession {
         for result in walker {
             match result {
                 Ok(file) => {
-                    match Self::process_entry(&self.prev_manifest, &self.config.root_path(), file) {
+                    match Self::process_entry(&self.prev_state, &self.config.root_path(), file) {
                         Ok(Some(i)) => {
                             log::trace!("Found asset '{}'", i.ident);
 
@@ -165,7 +165,7 @@ impl SyncSession {
     }
 
     fn process_entry(
-        prev_manifest: &Manifest,
+        prev_state: &State,
         root_path: &Path,
         file: DirEntry,
     ) -> Result<Option<Asset>, SyncError> {
@@ -190,9 +190,9 @@ impl SyncSession {
 
         let ident = AssetIdent::from_paths(root_path, file.path());
 
-        // Read previous state from manifest if available
+        // Read previous target state from file if available
         let targets = {
-            if let Some(prev) = prev_manifest.assets.get(&ident) {
+            if let Some(prev) = prev_state.assets.get(&ident) {
                 prev.targets.clone()
             } else {
                 HashMap::new()
@@ -223,7 +223,7 @@ impl SyncSession {
     fn iter_needs_sync<'a>(
         force: &'a bool,
         assets: &'a mut BTreeMap<AssetIdent, Asset>,
-        prev_manifest: &'a Manifest,
+        prev_state: &'a State,
         target: &'a TargetConfig,
     ) -> Box<dyn Iterator<Item = (&'a AssetIdent, &'a mut Asset)> + 'a> {
         Box::new(assets.iter_mut().filter(|(ident, asset)| {
@@ -232,7 +232,7 @@ impl SyncSession {
                 return true;
             }
 
-            if let Some(prev) = prev_manifest.assets.get(&ident) {
+            if let Some(prev) = prev_state.assets.get(&ident) {
                 if let Some(prev_state) = prev.targets.get(&target.key) {
                     // If the hashes differ, sync again
                     if prev_state.hash != asset.hash {
@@ -255,10 +255,10 @@ impl SyncSession {
         }))
     }
 
-    fn write_manifest(&self) -> Result<(), SyncError> {
-        let mut manifest = Manifest::default();
+    fn write_state(&self) -> Result<(), SyncError> {
+        let mut state = State::default();
 
-        manifest.assets = self
+        state.assets = self
             .assets
             .iter()
             .map(|(ident, input)| {
@@ -271,9 +271,9 @@ impl SyncSession {
             })
             .collect();
 
-        manifest.write(&self.config, self.config.root_path())?;
+        state.write(&self.config, self.config.root_path())?;
 
-        log::debug!("Wrote manifest to {}", self.config.root_path().display());
+        log::debug!("Wrote state to {}", self.config.root_path().display());
 
         Ok(())
     }
@@ -325,7 +325,7 @@ impl SyncStrategy for LocalSyncStrategy {
         for (ident, asset) in SyncSession::iter_needs_sync(
             &session.force_sync,
             &mut session.assets,
-            &session.prev_manifest,
+            &session.prev_state,
             &session.target,
         ) {
             let result: Result<(), SyncError> = (|| {
@@ -378,7 +378,7 @@ impl SyncStrategy for RobloxSyncStrategy {
         for (ident, asset) in SyncSession::iter_needs_sync(
             &session.force_sync,
             &mut session.assets,
-            &session.prev_manifest,
+            &session.prev_state,
             &session.target,
         ) {}
 
@@ -435,9 +435,9 @@ pub enum SyncError {
     },
 
     #[error(transparent)]
-    Manifest {
+    State {
         #[from]
-        source: ManifestError,
+        source: StateError,
     },
 
     #[error(transparent)]
