@@ -314,7 +314,7 @@ impl SyncStrategy for LocalSyncStrategy {
             .as_secs()
             .to_string();
 
-        let mut base_path = PathBuf::from("runway");
+        let mut base_path = PathBuf::from(".runway");
         base_path.push(session.config.name.clone());
 
         let mut ok_count = 0;
