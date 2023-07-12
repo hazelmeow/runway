@@ -20,10 +20,7 @@ impl AssetIdent {
         let displayed = format!("{}", relative.display());
 
         // Change the path separator to always be /
-        let displayed = match MAIN_SEPARATOR {
-            '/' => displayed,
-            sep => displayed.replace(sep, "/"),
-        };
+        let displayed = replace_slashes(displayed);
 
         AssetIdent(displayed.into())
     }
@@ -38,5 +35,12 @@ impl AsRef<str> for AssetIdent {
 impl fmt::Display for AssetIdent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+pub fn replace_slashes(s: String) -> String {
+    match MAIN_SEPARATOR {
+        '/' => s,
+        sep => s.replace(sep, "/"),
     }
 }
