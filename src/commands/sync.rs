@@ -39,6 +39,8 @@ struct SyncSession {
     target: TargetConfig,
     prev_manifest: Manifest,
 
+    force_sync: bool,
+
     assets: BTreeMap<AssetIdent, Asset>,
 
     // Errors encountered and ignored during syncing.
@@ -61,11 +63,11 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
     let strategy: Box<dyn SyncStrategy> = match target.r#type {
         TargetType::Local => Box::new(LocalSyncStrategy::new()?),
         TargetType::Roblox => {
-            let Some(api_key) = options.api_key else {
+            let Some(api_key) = &options.api_key else {
 				return Err(SyncError::MissingApiKey);
 			};
 
-            let Some(creator) = options.creator else {
+            let Some(creator) = &options.creator else {
 				return Err(SyncError::MissingCreator);
 			};
 
@@ -81,11 +83,14 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
                 unreachable!();
             };
 
-            Box::new(RobloxSyncStrategy { api_key, creator })
+            Box::new(RobloxSyncStrategy {
+                api_key: api_key.clone(),
+                creator,
+            })
         }
     };
 
-    let mut session = SyncSession::new(config, target)?;
+    let mut session = SyncSession::new(options, config, target)?;
 
     session.find_assets()?;
     session.perform_sync(strategy)?;
@@ -101,7 +106,7 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
 }
 
 impl SyncSession {
-    fn new(config: Config, target: TargetConfig) -> Result<Self, SyncError> {
+    fn new(options: SyncOptions, config: Config, target: TargetConfig) -> Result<Self, SyncError> {
         log::info!("Starting sync for target '{}'", target.key);
 
         let prev_manifest = match Manifest::read_from_folder(config.root_path()) {
@@ -120,6 +125,7 @@ impl SyncSession {
             config,
             prev_manifest,
             target,
+            force_sync: options.force,
             assets: BTreeMap::new(),
             errors: Vec::new(),
         })
@@ -219,11 +225,17 @@ impl SyncSession {
     }
 
     fn iter_needs_sync<'a>(
+        force: &'a bool,
         assets: &'a mut BTreeMap<AssetIdent, Asset>,
         prev_manifest: &'a Manifest,
         target: &'a TargetConfig,
     ) -> Box<dyn Iterator<Item = (&'a AssetIdent, &'a mut Asset)> + 'a> {
         Box::new(assets.iter_mut().filter(|(ident, asset)| {
+            if *force {
+                log::trace!("Asset '{}' will sync (forced)", ident);
+                return true;
+            }
+
             if let Some(prev) = prev_manifest.assets.get(&ident) {
                 if let Some(prev_state) = prev.targets.get(&target.key) {
                     // If the hashes differ, sync again
@@ -306,6 +318,7 @@ impl SyncStrategy for LocalSyncStrategy {
         let mut err_count = 0;
 
         for (ident, asset) in SyncSession::iter_needs_sync(
+            &session.force_sync,
             &mut session.assets,
             &session.prev_manifest,
             &session.target,
@@ -358,6 +371,7 @@ impl SyncStrategy for RobloxSyncStrategy {
         let assets = cloud.assets();
 
         for (ident, asset) in SyncSession::iter_needs_sync(
+            &session.force_sync,
             &mut session.assets,
             &session.prev_manifest,
             &session.target,

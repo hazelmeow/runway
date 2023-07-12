@@ -44,6 +44,10 @@ pub struct SyncOptions {
     /// The `key` of the target to sync to.
     #[arg(short, long)]
     pub target: String,
+
+    /// Ignore previous manifest and resync everything.
+    #[arg(short, long)]
+    pub force: bool,
 }
 
 #[derive(Args, Debug)]
