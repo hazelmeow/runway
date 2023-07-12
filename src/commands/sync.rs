@@ -23,7 +23,7 @@ use crate::{
 
 #[derive(Debug)]
 struct Asset {
-    // A unique identifier for this asset in the project.
+    /// A unique identifier for this asset in the project.
     ident: AssetIdent,
 
     path: PathBuf,
@@ -110,7 +110,7 @@ impl SyncSession {
     fn new(options: SyncOptions, config: Config, target: TargetConfig) -> Result<Self, SyncError> {
         log::info!("Starting sync for target '{}'", target.key);
 
-        let prev_state = match State::read_from_folder(config.root_path()) {
+        let prev_state = match State::read_from_config(&config) {
             Ok(m) => m,
             Err(e) => {
                 return Err(e.into());
@@ -271,7 +271,7 @@ impl SyncSession {
             })
             .collect();
 
-        state.write(&self.config, self.config.root_path())?;
+        state.write_for_config(&self.config)?;
 
         log::debug!("Wrote state to {}", self.config.root_path().display());
 

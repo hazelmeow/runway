@@ -61,7 +61,9 @@ impl State {
     }
 
     // Merge local state and other state
-    pub fn read_from_folder<P: AsRef<Path>>(folder_path: P) -> Result<Self, StateError> {
+    pub fn read_from_config(config: &Config) -> Result<Self, StateError> {
+        let folder_path = config.root_path();
+
         let mut main_state = match State::read_from_file(&folder_path, STATE_FILENAME) {
             Ok(m) => m,
             Err(e) => {
@@ -72,7 +74,7 @@ impl State {
                 }
             }
         };
-        let local_state = match State::read_from_file(&folder_path, STATE_FILENAME) {
+        let local_state = match State::read_from_file(&folder_path, STATE_FILENAME_LOCAL) {
             Ok(m) => m,
             Err(e) => {
                 if e.is_not_found() {
@@ -125,7 +127,9 @@ impl State {
         Ok(())
     }
 
-    pub fn write(&self, config: &Config, folder_path: &Path) -> Result<(), StateError> {
+    pub fn write_for_config(&self, config: &Config) -> Result<(), StateError> {
+        let folder_path = config.root_path();
+
         let main_state = self.filter_scope(&config, false);
         main_state.write_to_file(&folder_path, false)?;
 
