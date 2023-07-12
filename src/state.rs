@@ -64,10 +64,13 @@ impl State {
     pub fn read_from_config(config: &Config) -> Result<Self, StateError> {
         let folder_path = config.root_path();
 
+        log::debug!("Loading state from {}", folder_path.display());
+
         let mut main_state = match State::read_from_file(&folder_path, STATE_FILENAME) {
             Ok(m) => m,
             Err(e) => {
                 if e.is_not_found() {
+                    log::debug!("{} was not found, creating new", STATE_FILENAME);
                     State::default()
                 } else {
                     return Err(e.into());
@@ -78,6 +81,7 @@ impl State {
             Ok(m) => m,
             Err(e) => {
                 if e.is_not_found() {
+                    log::debug!("{} was not found, creating new", STATE_FILENAME_LOCAL);
                     State::default()
                 } else {
                     return Err(e.into());
@@ -129,6 +133,8 @@ impl State {
 
     pub fn write_for_config(&self, config: &Config) -> Result<(), StateError> {
         let folder_path = config.root_path();
+
+        log::debug!("Writing state to {}", folder_path.display());
 
         let main_state = self.filter_scope(&config, false);
         main_state.write_to_file(&folder_path, false)?;

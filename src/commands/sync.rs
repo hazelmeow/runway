@@ -273,8 +273,6 @@ impl SyncSession {
 
         state.write_for_config(&self.config)?;
 
-        log::debug!("Wrote state to {}", self.config.root_path().display());
-
         Ok(())
     }
 }
