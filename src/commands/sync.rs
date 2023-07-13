@@ -225,6 +225,7 @@ impl SyncSession {
         assets: &'a mut BTreeMap<AssetIdent, Asset>,
         prev_state: &'a State,
         target: &'a TargetConfig,
+        check_local_path: &'a bool,
     ) -> Box<dyn Iterator<Item = (&'a AssetIdent, &'a mut Asset)> + 'a> {
         Box::new(assets.iter_mut().filter(|(ident, asset)| {
             if *force {
@@ -239,6 +240,18 @@ impl SyncSession {
                         log::trace!("Asset '{}' has a different hash, will sync", ident);
                         true
                     } else {
+						if *check_local_path {
+							if let Some(local_path) = &prev_state.local_path {
+								if !local_path.exists() {
+									log::trace!("Asset '{}' is unchanged but last known path does not exist, will sync", ident);
+									return true
+								}
+							} else {
+								log::trace!("Asset '{}' is does not have last known path, will sync", ident);
+								return true
+							}
+						}
+
                         log::trace!("Asset '{}' is unchanged, skipping", ident);
                         false
                     }
@@ -325,6 +338,7 @@ impl SyncStrategy for LocalSyncStrategy {
             &mut session.assets,
             &session.prev_state,
             &session.target,
+            &true,
         ) {
             let result: Result<(), SyncError> = (|| {
                 let asset_path = base_path.join(ident.with_cache_bust(&timestamp));
@@ -335,7 +349,7 @@ impl SyncStrategy for LocalSyncStrategy {
                 fs::create_dir_all(&full_path.parent().unwrap())?;
                 fs::write(&full_path, &asset.contents)?;
 
-                log::info!("Copied {} to {}", &ident, &full_path.display());
+                log::info!("Copied {} to {}", &ident, &asset_path.display());
 
                 asset.targets.insert(
                     target_key.clone(),
@@ -345,6 +359,7 @@ impl SyncStrategy for LocalSyncStrategy {
                             "rbxasset://{}",
                             replace_slashes(asset_path.to_string_lossy().to_string())
                         ),
+                        local_path: Some(full_path),
                     },
                 );
 
@@ -378,6 +393,7 @@ impl SyncStrategy for RobloxSyncStrategy {
             &mut session.assets,
             &session.prev_state,
             &session.target,
+            &false,
         ) {}
 
         todo!();

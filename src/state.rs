@@ -157,6 +157,9 @@ pub struct TargetState {
     pub hash: String,
 
     pub id: String,
+
+    // Used by local syncs to store the previous path and check that the file exists
+    pub local_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Error)]
