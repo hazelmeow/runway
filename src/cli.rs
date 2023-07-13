@@ -28,20 +28,18 @@ pub enum Subcommand {
 
 #[derive(Args, Debug)]
 pub struct SyncOptions {
-    /// The Roblox Open Cloud API key to use. Not required for local sync targets.
+    /// (Roblox targets only) Open Cloud API key.
     #[arg(short, long, env = "RUNWAY_API_KEY")]
     pub api_key: Option<SecretString>,
 
-    /// The user ID or group ID to use when syncing to Roblox targets.
     #[command(flatten)]
     pub creator: Option<Creator>,
 
-    /// A path to a config file or directory containing a `runway.toml` file.
-    /// If unspecified, Runway looks for a config file in the current directory.
+    /// Path to config file or directory containing config file.
     #[arg(short, long, value_name = "FILE")]
     pub config: Option<PathBuf>,
 
-    /// The `key` of the target to sync to.
+    /// Which target to sync to.
     #[arg(short, long)]
     pub target: String,
 
@@ -53,9 +51,11 @@ pub struct SyncOptions {
 #[derive(Args, Debug)]
 #[group(required = false, multiple = false)]
 pub struct Creator {
+    /// (Roblox targets only) Sync to a user
     #[arg(short, long, group = "creator", env = "RUNWAY_USER_ID")]
     pub user_id: Option<String>,
 
+    /// (Roblox targets only) Sync to a group
     #[arg(short, long, group = "creator", env = "RUNWAY_GROUP_ID")]
     pub group_id: Option<String>,
 }
