@@ -26,6 +26,14 @@ enum Value {
 #[derive(Debug, Clone, Default)]
 struct Object(HashMap<String, Value>);
 
+fn transform_ident<'a>(ident: &'a AssetIdent, config: &CodegenConfig) -> String {
+    let mut transformed = PathBuf::from_str(ident.as_ref()).unwrap();
+    if config.strip_extension {
+        transformed.set_extension("");
+    }
+    transformed.to_string_lossy().to_string()
+}
+
 fn generate_tree(
     state: &State,
     config: &CodegenConfig,
@@ -40,32 +48,35 @@ fn generate_tree(
 
         let mut head = &mut root;
 
-        let mut transformed = PathBuf::from_str(ident.as_ref()).unwrap();
-        if config.strip_extension {
-            transformed.set_extension("");
-        }
-        let ident_string = transformed.to_string_lossy();
-        let mut parts = ident_string.split("/").collect::<Vec<_>>();
-        let last_part = parts.pop().ok_or_else(|| CodegenError::TreeStructure)?;
+        let ident_string = transform_ident(&ident, config);
 
-        for part in parts {
-            match head {
-                Value::Object(obj) => {
-                    if !obj.0.contains_key(part) {
-                        obj.0
-                            .insert(part.to_string(), Value::Object(Object::default()));
+        let key = if config.flatten {
+            ident_string
+        } else {
+            let mut parts = ident_string.split("/").collect::<Vec<_>>();
+            let last_part = parts.pop().ok_or_else(|| CodegenError::TreeStructure)?;
+
+            for part in parts {
+                match head {
+                    Value::Object(obj) => {
+                        if !obj.0.contains_key(part) {
+                            obj.0
+                                .insert(part.to_string(), Value::Object(Object::default()));
+                        }
+
+                        head = obj.0.get_mut(part).unwrap();
                     }
-
-                    head = obj.0.get_mut(part).unwrap();
+                    Value::Id(_) => return Err(CodegenError::TreeStructure),
                 }
-                Value::Id(_) => return Err(CodegenError::TreeStructure),
             }
-        }
+
+            last_part.into()
+        };
 
         match head {
             Value::Object(obj) => obj
                 .0
-                .insert(last_part.to_string(), Value::Id(target_state.id.clone())),
+                .insert(key.to_string(), Value::Id(target_state.id.clone())),
             Value::Id(_) => return Err(CodegenError::TreeStructure),
         };
     }

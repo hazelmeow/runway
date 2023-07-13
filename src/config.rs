@@ -103,6 +103,10 @@ pub struct CodegenConfig {
     /// Removes file extensions from the output.
     #[serde(default = "default_strip_extension")]
     pub strip_extension: bool,
+
+    /// Flattens the output.
+    #[serde(default)]
+    pub flatten: bool,
 }
 
 fn default_strip_extension() -> bool {
