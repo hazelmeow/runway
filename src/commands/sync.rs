@@ -17,6 +17,7 @@ use thiserror::Error;
 use crate::{
     asset_ident::{replace_slashes, AssetIdent},
     cli::SyncOptions,
+    codegen,
     config::{Config, ConfigError, TargetConfig, TargetType},
     state::{AssetState, State, StateError, TargetState},
 };
@@ -91,11 +92,15 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
         }
     };
 
-    let mut session = SyncSession::new(options, config, target)?;
+    let mut session = SyncSession::new(options, &config, &target)?;
 
     session.find_assets()?;
     session.perform_sync(strategy)?;
-    session.write_state()?;
+    let state = session.write_state()?;
+
+    if let Err(e) = codegen::generate_all(&config, &state, &target) {
+        session.raise_error(e);
+    }
 
     if session.errors.is_empty() {
         Ok(())
@@ -107,7 +112,11 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
 }
 
 impl SyncSession {
-    fn new(options: SyncOptions, config: Config, target: TargetConfig) -> Result<Self, SyncError> {
+    fn new(
+        options: SyncOptions,
+        config: &Config,
+        target: &TargetConfig,
+    ) -> Result<Self, SyncError> {
         log::info!("Starting sync for target '{}'", target.key);
 
         let prev_state = match State::read_from_config(&config) {
@@ -118,9 +127,10 @@ impl SyncSession {
         };
 
         Ok(SyncSession {
-            config,
+            // TODO: make this suck less
+            config: config.clone(),
             prev_state,
-            target,
+            target: target.clone(),
             force_sync: options.force,
             assets: BTreeMap::new(),
             errors: Vec::new(),
@@ -268,7 +278,7 @@ impl SyncSession {
         }))
     }
 
-    fn write_state(&self) -> Result<(), SyncError> {
+    fn write_state(&self) -> Result<State, SyncError> {
         let mut state = State::default();
 
         state.assets = self
@@ -286,7 +296,7 @@ impl SyncSession {
 
         state.write_for_config(&self.config)?;
 
-        Ok(())
+        Ok(state)
     }
 }
 

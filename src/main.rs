@@ -1,15 +1,17 @@
 use std::process::ExitCode;
 
 use clap::Parser;
-use cli::{Cli, Subcommand};
 use log;
 use pretty_env_logger;
 
 mod asset_ident;
 mod cli;
+mod codegen;
 mod commands;
 mod config;
 mod state;
+
+use crate::cli::{Cli, Subcommand};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {

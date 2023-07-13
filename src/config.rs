@@ -7,6 +7,8 @@ use std::{
 use serde::Deserialize;
 use thiserror::Error;
 
+use crate::codegen::CodegenFormat;
+
 static CONFIG_FILENAME: &str = "runway.toml";
 
 /// Configuration for Runway, contained in a `runway.toml` file.
@@ -17,12 +19,16 @@ pub struct Config {
     pub name: String,
 
     /// A list of targets to choose from when syncing.
-    #[serde(rename = "target")]
+    #[serde(default, rename = "target")]
     pub targets: Vec<TargetConfig>,
 
     /// A list of inputs that define searches for assets to sync.
-    #[serde(rename = "input")]
+    #[serde(default, rename = "input")]
     pub inputs: Vec<InputConfig>,
+
+    /// A list of codegen outputs to generate.
+    #[serde(default, rename = "codegen")]
+    pub codegens: Vec<CodegenConfig>,
 
     /// The path that this config came from. Paths in this config
     /// should be relative to the folder containing the config file.
@@ -86,6 +92,15 @@ pub struct InputConfig {
     pub glob: String,
 }
 
+#[derive(Deserialize, Clone, Debug)]
+pub struct CodegenConfig {
+    /// The path for this codegen output to write to, relative to this config file.
+    pub path: PathBuf,
+
+    /// The format to generate.
+    pub format: CodegenFormat,
+}
+
 impl Config {
     pub fn read_from_folder_or_file<P: AsRef<Path>>(path: P) -> Result<Self, ConfigError> {
         let path = path.as_ref();
@@ -119,7 +134,11 @@ impl Config {
 
         config.file_path = path.to_owned();
 
-        // config.make_paths_absolute();
+        // Make codegen paths absolute
+        let base_path = path.parent().unwrap();
+        for codegen in config.codegens.iter_mut() {
+            make_absolute(&mut codegen.path, base_path);
+        }
 
         // Check for duplicate target keys
         let unique_keys_len = config
@@ -137,6 +156,13 @@ impl Config {
 
     pub fn root_path(&self) -> &Path {
         &self.file_path.parent().unwrap()
+    }
+}
+
+fn make_absolute(path: &mut PathBuf, base: &Path) {
+    if path.is_relative() {
+        let new_path = base.join(&*path);
+        *path = new_path;
     }
 }
 
