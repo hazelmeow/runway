@@ -1,26 +1,47 @@
-use serde_json::{Map, Value};
+use super::{CodegenError, Object, Value};
 
-use super::CodegenError;
+pub(super) fn generate_json(tree: &Value) -> Result<String, CodegenError> {
+    let Value::Object(root) = tree else { panic!() };
+    Ok(format_object(root, 0))
+}
 
-use crate::{config::TargetConfig, state::State};
+fn format_object(obj: &Object, indent_level: usize) -> String {
+    let indent = "\t".repeat(indent_level);
+    let indent_plus1 = "\t".repeat(indent_level + 1);
 
-pub fn generate_json(state: &State, target: &TargetConfig) -> Result<String, CodegenError> {
-    let mut root = Value::Object(Map::new());
+    let mut s = String::new();
+    s.push_str("{\n");
 
-    state
-        .assets
-        .iter()
-        .map(|(ident, asset)| {
-            let Some(target_state) = asset.targets.get(&target.key) else {
-				return Err(CodegenError::MissingAsset { ident: ident.clone() });
-			};
+    let mut iter = obj.0.iter().peekable();
 
-            let ptr = jsonptr::Pointer::try_from("/".to_string() + ident.as_ref()).unwrap();
-            ptr.assign(&mut root, target_state.id.clone()).unwrap();
+    while let Some((k, v)) = iter.next() {
+        s.push_str(&(indent_plus1.clone() + &format_string(k) + ": "));
 
-            Ok(())
-        })
-        .collect::<Result<(), CodegenError>>()?;
+        match v {
+            Value::Object(subobj) => {
+                s.push_str(&format_object(&subobj, indent_level + 1));
 
-    Ok(serde_json::to_string_pretty(&root)?)
+                if iter.peek().is_some() {
+                    s.push_str(",");
+                }
+                s.push_str("\n");
+            }
+            Value::Id(id) => {
+                s.push_str(&format_string(id));
+
+                if iter.peek().is_some() {
+                    s.push_str(",");
+                }
+                s.push_str("\n");
+            }
+        }
+    }
+
+    s.push_str(&(indent + "}"));
+
+    s
+}
+
+fn format_string<S: AsRef<str>>(s: S) -> String {
+    "\"".to_string() + s.as_ref() + "\""
 }
