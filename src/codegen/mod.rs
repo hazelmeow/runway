@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap, fs, path::PathBuf, str::FromStr};
 
 use serde::Deserialize;
 use thiserror::Error;
@@ -26,7 +26,11 @@ enum Value {
 #[derive(Debug, Clone, Default)]
 struct Object(HashMap<String, Value>);
 
-fn generate_tree(state: &State, target: &TargetConfig) -> Result<Value, CodegenError> {
+fn generate_tree(
+    state: &State,
+    config: &CodegenConfig,
+    target: &TargetConfig,
+) -> Result<Value, CodegenError> {
     let mut root = Value::Object(Object::default());
 
     for (ident, asset) in &state.assets {
@@ -36,7 +40,11 @@ fn generate_tree(state: &State, target: &TargetConfig) -> Result<Value, CodegenE
 
         let mut head = &mut root;
 
-        let ident_string = ident.to_string();
+        let mut transformed = PathBuf::from_str(ident.as_ref()).unwrap();
+        if config.strip_extension {
+            transformed.set_extension("");
+        }
+        let ident_string = transformed.to_string_lossy();
         let mut parts = ident_string.split("/").collect::<Vec<_>>();
         let last_part = parts.pop().ok_or_else(|| CodegenError::TreeStructure)?;
 
@@ -82,10 +90,8 @@ pub fn generate_all(
 
     log::info!("Generating {} outputs", config.codegens.len());
 
-    let tree = generate_tree(state, target)?;
-
     for codegen in &config.codegens {
-        match generate(&codegen, &tree) {
+        match generate(&state, &codegen, &target) {
             Ok(_) => {}
             Err(e) => {
                 log::error!("{}", e);
@@ -104,12 +110,18 @@ pub fn generate_all(
     }
 }
 
-fn generate(config: &CodegenConfig, tree: &Value) -> Result<(), CodegenError> {
+fn generate(
+    state: &State,
+    config: &CodegenConfig,
+    target: &TargetConfig,
+) -> Result<(), CodegenError> {
     log::debug!(
         "Generating {:?} output at {}",
         config.format,
         config.path.display()
     );
+
+    let tree = generate_tree(&state, &config, &target)?;
 
     let contents = match config.format {
         CodegenFormat::Json => generate_json(&tree),

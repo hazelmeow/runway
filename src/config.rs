@@ -99,6 +99,14 @@ pub struct CodegenConfig {
 
     /// The format to generate.
     pub format: CodegenFormat,
+
+    /// Removes file extensions from the output.
+    #[serde(default = "default_strip_extension")]
+    pub strip_extension: bool,
+}
+
+fn default_strip_extension() -> bool {
+    true
 }
 
 impl Config {
