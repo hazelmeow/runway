@@ -53,7 +53,7 @@ impl TargetType {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-#[serde(from = "IntermediateTarget")]
+#[serde(from = "IntermediateTarget", deny_unknown_fields)]
 pub struct TargetConfig {
     /// Unique identifier for this target used in the CLI and state files. If omitted,
     /// it defaults to the value of `target`. If the same target is used more than once,
@@ -68,6 +68,7 @@ pub struct TargetConfig {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct IntermediateTarget {
     key: Option<String>,
     r#type: TargetType,
@@ -84,6 +85,7 @@ impl From<IntermediateTarget> for TargetConfig {
 }
 
 #[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct InputConfig {
     /// A glob matching files containing assets to be upload.
     ///
@@ -93,6 +95,7 @@ pub struct InputConfig {
 }
 
 #[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct CodegenConfig {
     /// The path for this codegen output to write to, relative to this config file.
     pub path: PathBuf,
