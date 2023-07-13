@@ -51,7 +51,7 @@ pub struct SyncOptions {
 }
 
 #[derive(Args, Debug)]
-#[group(required = true, multiple = false)]
+#[group(required = false, multiple = false)]
 pub struct Creator {
     #[arg(short, long, group = "creator", env = "RUNWAY_USER_ID")]
     pub user_id: Option<String>,
