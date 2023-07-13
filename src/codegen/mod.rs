@@ -10,8 +10,10 @@ use crate::{
 };
 
 use self::json::generate_json;
+use self::luau::generate_luau;
 
 mod json;
+mod luau;
 
 #[derive(Debug, Clone)]
 enum Value {
@@ -65,7 +67,7 @@ fn generate_tree(state: &State, target: &TargetConfig) -> Result<Value, CodegenE
 #[serde(rename_all = "lowercase")]
 pub enum CodegenFormat {
     Json,
-    // Luau,
+    Luau,
     // Typescript,
 }
 
@@ -109,6 +111,7 @@ fn generate(config: &CodegenConfig, tree: &Value) -> Result<(), CodegenError> {
 
     let contents = match config.format {
         CodegenFormat::Json => generate_json(&tree),
+        CodegenFormat::Luau => generate_luau(&tree),
     }?;
 
     fs::write(&config.path, contents)?;
