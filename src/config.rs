@@ -103,6 +103,10 @@ pub struct CodegenConfig {
     /// The format to generate.
     pub format: CodegenFormat,
 
+    /// Removes a path section from paths in the output.
+    #[serde(default)]
+    pub strip_prefix: Option<PathBuf>,
+
     /// Removes file extensions from the output.
     #[serde(default = "default_strip_extension")]
     pub strip_extension: bool,

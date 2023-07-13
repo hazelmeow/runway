@@ -26,12 +26,26 @@ enum Value {
 #[derive(Debug, Clone, Default)]
 struct Object(HashMap<String, Value>);
 
-fn transform_ident<'a>(ident: &'a AssetIdent, config: &CodegenConfig) -> String {
-    let mut transformed = PathBuf::from_str(ident.as_ref()).unwrap();
+fn transform_ident(ident: &AssetIdent, config: &CodegenConfig) -> String {
+    let mut path = PathBuf::from_str(ident.as_ref()).unwrap();
+    path = if let Some(prefix) = &config.strip_prefix {
+        if let Ok(t) = path.strip_prefix(&prefix) {
+            t.to_path_buf()
+        } else {
+            log::warn!(
+                "Failed to strip prefix '{}' from '{}'",
+                prefix.display(),
+                ident
+            );
+            path
+        }
+    } else {
+        path
+    };
     if config.strip_extension {
-        transformed.set_extension("");
+        path.set_extension("");
     }
-    transformed.to_string_lossy().to_string()
+    path.to_string_lossy().to_string()
 }
 
 fn generate_tree(
