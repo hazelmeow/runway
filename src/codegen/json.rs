@@ -2,7 +2,7 @@ use super::{CodegenError, Object, Value};
 
 pub(super) fn generate_json(tree: &Value) -> Result<String, CodegenError> {
     let Value::Object(root) = tree else { panic!() };
-    Ok(format_object(root, 0))
+    Ok(format_object(root, 0) + "\n")
 }
 
 fn format_object(obj: &Object, indent_level: usize) -> String {
