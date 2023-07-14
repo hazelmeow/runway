@@ -28,6 +28,12 @@ async fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             }
         }
+        Subcommand::Watch(args) => {
+            if let Err(e) = commands::watch(args).await {
+                log::error!("{}", e);
+                return ExitCode::FAILURE;
+            }
+        }
     };
 
     return ExitCode::SUCCESS;

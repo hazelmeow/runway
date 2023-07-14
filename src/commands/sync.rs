@@ -50,7 +50,7 @@ struct SyncSession {
 }
 
 pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
-    let config_path = match &options.config {
+    let config_path = match &options.sync_or_watch.config {
         Some(c) => c.to_owned(),
         None => std::env::current_dir()?,
     };
@@ -58,18 +58,26 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
 
     log::debug!("Loaded config at '{}'", config.file_path.display());
 
-    let Some(target) = config.targets.clone().into_iter().find(|t| t.key == options.target) else {
+    let Some(target) = config.targets.clone().into_iter().find(|t| t.key == options.sync_or_watch.target) else {
 		return Err(SyncError::UnknownTarget);
 	};
 
+    sync_with_config(&options, &config, &target).await
+}
+
+pub async fn sync_with_config(
+    options: &SyncOptions,
+    config: &Config,
+    target: &TargetConfig,
+) -> Result<(), SyncError> {
     let strategy: Box<dyn SyncStrategy> = match target.r#type {
         TargetType::Local => Box::new(LocalSyncStrategy::new()?),
         TargetType::Roblox => {
-            let Some(api_key) = &options.api_key else {
+            let Some(api_key) = &options.sync_or_watch.api_key else {
 				return Err(SyncError::MissingApiKey);
 			};
 
-            let Some(creator) = &options.creator else {
+            let Some(creator) = &options.sync_or_watch.creator else {
 				return Err(SyncError::MissingCreator);
 			};
 
@@ -113,7 +121,7 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
 
 impl SyncSession {
     fn new(
-        options: SyncOptions,
+        options: &SyncOptions,
         config: &Config,
         target: &TargetConfig,
     ) -> Result<Self, SyncError> {

@@ -10,13 +10,15 @@ clap = { version = "4.3.11", features = ["derive", "env"] }
 clap-verbosity-flag = "2.0.1"
 debug-ignore = "1.0.5"
 globwalk = "0.8.1"
+ignore = "0.4.20"
 log = "0.4.19"
+notify = "6.0.1"
 pretty_env_logger = "0.5.0"
 rbxcloud = "0.5.0"
 roblox_install = "1.0.0"
 secrecy = "0.8.0"
 serde = { version = "1.0.171", features = ["derive", "rc"] }
 thiserror = "1.0.43"
-tokio = { version = "1.29.1", features = ["macros", "rt", "fs"] }
+tokio = { version = "1.29.1", features = ["macros", "rt", "fs", "sync", "signal"] }
 toml = "0.7.6"
 unicode-ident = "1.0.10"

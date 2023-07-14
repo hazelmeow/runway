@@ -23,11 +23,39 @@ pub struct GlobalOptions {
 #[derive(clap::Subcommand, Debug)]
 pub enum Subcommand {
     Sync(SyncOptions),
-    // Watch {},
+    Watch(WatchOptions),
 }
 
 #[derive(Args, Debug)]
 pub struct SyncOptions {
+    #[command(flatten)]
+    pub sync_or_watch: SyncOrWatchOptions,
+
+    /// Ignore previous state and resync everything.
+    #[arg(short, long)]
+    pub force: bool,
+}
+
+#[derive(Args, Debug)]
+pub struct WatchOptions {
+    #[command(flatten)]
+    pub sync_or_watch: SyncOrWatchOptions,
+}
+
+#[derive(Args, Debug, Clone)]
+#[group(required = false, multiple = false)]
+pub struct Creator {
+    /// (Roblox targets only) Sync to a user
+    #[arg(short, long, group = "creator", env = "RUNWAY_USER_ID")]
+    pub user_id: Option<String>,
+
+    /// (Roblox targets only) Sync to a group
+    #[arg(short, long, group = "creator", env = "RUNWAY_GROUP_ID")]
+    pub group_id: Option<String>,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct SyncOrWatchOptions {
     /// (Roblox targets only) Open Cloud API key.
     #[arg(short, long, env = "RUNWAY_API_KEY")]
     pub api_key: Option<SecretString>,
@@ -42,20 +70,4 @@ pub struct SyncOptions {
     /// Which target to sync to.
     #[arg(short, long)]
     pub target: String,
-
-    /// Ignore previous state and resync everything.
-    #[arg(short, long)]
-    pub force: bool,
-}
-
-#[derive(Args, Debug)]
-#[group(required = false, multiple = false)]
-pub struct Creator {
-    /// (Roblox targets only) Sync to a user
-    #[arg(short, long, group = "creator", env = "RUNWAY_USER_ID")]
-    pub user_id: Option<String>,
-
-    /// (Roblox targets only) Sync to a group
-    #[arg(short, long, group = "creator", env = "RUNWAY_GROUP_ID")]
-    pub group_id: Option<String>,
 }
