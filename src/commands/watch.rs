@@ -3,10 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use ignore::{
-    overrides::{Override, OverrideBuilder},
-    WalkBuilder,
-};
+use ignore::overrides::{Override, OverrideBuilder};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use thiserror::Error;
 use tokio::{
@@ -20,19 +17,12 @@ use crate::{
     config::{Config, ConfigError, InputConfig},
 };
 
+use super::sync::configure_walker;
 use super::SyncError;
 
 fn descendant_matches(path: &PathBuf, overrides: Override) -> bool {
-    WalkBuilder::new(path)
-        // Only match the InputConfig's glob
-        .overrides(overrides)
-        // Don't check ignore files
-        .parents(false)
-        .ignore(false)
-        .git_ignore(false)
-        .git_global(false)
-        .git_exclude(false)
-        // Check if any descendants match our glob
+    // Check if any descendants match our glob
+    configure_walker(path, overrides)
         .build()
         .into_iter()
         .next()

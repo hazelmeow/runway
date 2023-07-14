@@ -5,7 +5,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use globwalk::{DirEntry, GlobWalkerBuilder};
+use ignore::{
+    overrides::{Override, OverrideBuilder},
+    DirEntry, WalkBuilder,
+};
 use rbxcloud::rbx::{
     assets::{AssetCreator, AssetGroupCreator, AssetUserCreator},
     RbxCloud,
@@ -119,6 +122,22 @@ pub async fn sync_with_config(
     }
 }
 
+pub fn configure_walker(root: &PathBuf, overrides: Override) -> WalkBuilder {
+    let mut builder = WalkBuilder::new(root);
+
+    builder
+        // Only match the InputConfig's glob
+        .overrides(overrides)
+        // Don't check ignore files
+        .parents(false)
+        .ignore(false)
+        .git_ignore(false)
+        .git_global(false)
+        .git_exclude(false);
+
+    builder
+}
+
 impl SyncSession {
     fn new(
         options: &SyncOptions,
@@ -150,15 +169,15 @@ impl SyncSession {
     }
 
     fn find_assets(&mut self) -> Result<(), SyncError> {
-        let patterns = self
-            .config
-            .inputs
-            .iter()
-            .map(|f| f.glob.clone())
-            .collect::<Vec<String>>();
+        let root = self.config.root_path().to_path_buf();
 
-        let walker =
-            GlobWalkerBuilder::from_patterns(self.config.root_path().clone(), &patterns).build()?;
+        let mut builder = OverrideBuilder::new(&root);
+        for input in &self.config.inputs {
+            builder.add(&input.glob)?;
+        }
+        let overrides = builder.build()?;
+
+        let walker = configure_walker(&root, overrides).build();
 
         for result in walker {
             match result {
@@ -479,15 +498,9 @@ pub enum SyncError {
     },
 
     #[error(transparent)]
-    GlobError {
+    Ignore {
         #[from]
-        source: globwalk::GlobError,
-    },
-
-    #[error(transparent)]
-    WalkError {
-        #[from]
-        source: globwalk::WalkError,
+        source: ignore::Error,
     },
 
     #[error(transparent)]

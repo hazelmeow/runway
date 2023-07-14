@@ -9,7 +9,6 @@ blake3 = "1.4.1"
 clap = { version = "4.3.11", features = ["derive", "env"] }
 clap-verbosity-flag = "2.0.1"
 debug-ignore = "1.0.5"
-globwalk = "0.8.1"
 ignore = "0.4.20"
 log = "0.4.19"
 notify = "6.0.1"
