@@ -15,8 +15,7 @@ use ignore::{
 };
 use rbxcloud::rbx::{
     assets::{
-        AssetCreation, AssetCreationContext, AssetCreator, AssetGroupCreator, AssetType,
-        AssetUserCreator,
+        AssetCreation, AssetCreationContext, AssetCreator, AssetGroupCreator, AssetUserCreator,
     },
     CreateAsset, GetAsset, RbxAssets, RbxCloud,
 };
@@ -214,22 +213,14 @@ impl SyncSession {
             return Ok(None);
         }
 
-        if !matches!(
-            file.path()
-                .extension()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap(),
-            "png" | "jpg" | "jpeg" | "tga"
-        ) {
-            return Err(SyncError::UnsupportedFile {
-                path: file.path().into(),
-            });
-        }
+        let ident = AssetIdent::from_paths(root_path, file.path()).map_err(|source| {
+            SyncError::Unsupported {
+                path: file.path().to_owned(),
+                source,
+            }
+        })?;
 
         let contents = fs::read(file.path())?;
-
-        let ident = AssetIdent::from_paths(root_path, file.path());
 
         // Read previous target state from file if available
         let targets = {
@@ -587,7 +578,7 @@ async fn roblox_create_asset(
         .assets
         .create(&CreateAsset {
             asset: AssetCreation {
-                asset_type: AssetType::DecalPng,
+                asset_type: ident.asset_type(),
                 display_name: ident.last_component().to_string(),
                 description: "Uploaded by Runway.".to_string(),
                 creation_context: AssetCreationContext {
@@ -656,7 +647,10 @@ pub enum SyncError {
     MissingCreator,
 
     #[error("Matched file at {} is not supported", .path.display())]
-    UnsupportedFile { path: PathBuf },
+    Unsupported {
+        path: PathBuf,
+        source: rbxcloud::rbx::error::Error,
+    },
 
     #[error("Failed to upload file")]
     UploadFailed,

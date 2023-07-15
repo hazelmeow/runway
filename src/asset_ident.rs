@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use rbxcloud::rbx::assets::AssetType;
 use serde::{Deserialize, Serialize};
 
 /// Represents a path to an asset inside a project.
@@ -12,7 +13,10 @@ use serde::{Deserialize, Serialize};
 pub struct AssetIdent(Arc<str>);
 
 impl AssetIdent {
-    pub fn from_paths(root_path: &Path, asset_path: &Path) -> Self {
+    pub fn from_paths(
+        root_path: &Path,
+        asset_path: &Path,
+    ) -> Result<Self, rbxcloud::rbx::error::Error> {
         let relative = asset_path
             .strip_prefix(root_path)
             .expect("AssetIdent::from_paths expects asset_path to have root_path as a prefix.");
@@ -22,7 +26,12 @@ impl AssetIdent {
         // Change the path separator to always be /
         let displayed = replace_slashes(displayed);
 
-        AssetIdent(displayed.into())
+        let ident = AssetIdent(displayed.into());
+
+        // Make sure this file maps to a valid asset type
+        AssetType::try_from_extension(&ident.extension().unwrap_or_default())?;
+
+        Ok(ident)
     }
 
     pub fn with_cache_bust(&self, cb: &str) -> PathBuf {
@@ -44,6 +53,11 @@ impl AssetIdent {
     pub fn extension(&self) -> Option<String> {
         let p: PathBuf = self.as_ref().into();
         p.extension().map(|e| e.to_string_lossy().to_string())
+    }
+
+    pub fn asset_type(&self) -> AssetType {
+        // We can unwrap here because we already checked in new()
+        AssetType::try_from_extension(&self.extension().unwrap_or_default()).unwrap()
     }
 }
 
