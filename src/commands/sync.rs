@@ -2,16 +2,23 @@ use std::{
     collections::{BTreeMap, HashMap},
     fs,
     path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
+    sync::Arc,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+use arl::RateLimiter;
+use async_trait::async_trait;
+use futures::{stream::FuturesUnordered, StreamExt};
 use ignore::{
     overrides::{Override, OverrideBuilder},
     DirEntry, WalkBuilder,
 };
 use rbxcloud::rbx::{
-    assets::{AssetCreator, AssetGroupCreator, AssetUserCreator},
-    RbxCloud,
+    assets::{
+        AssetCreation, AssetCreationContext, AssetCreator, AssetGroupCreator, AssetType,
+        AssetUserCreator,
+    },
+    CreateAsset, GetAsset, RbxAssets, RbxCloud,
 };
 use roblox_install::RobloxStudio;
 use secrecy::{ExposeSecret, SecretString};
@@ -96,17 +103,14 @@ pub async fn sync_with_config(
                 unreachable!();
             };
 
-            Box::new(RobloxSyncStrategy {
-                api_key: api_key.clone(),
-                creator,
-            })
+            Box::new(RobloxSyncStrategy::new(api_key, creator))
         }
     };
 
     let mut session = SyncSession::new(options, &config, &target)?;
 
     session.find_assets()?;
-    session.perform_sync(strategy)?;
+    session.perform_sync(strategy).await?;
     let state = session.write_state()?;
 
     if let Err(e) = codegen::generate_all(&config, &state, &target) {
@@ -245,8 +249,8 @@ impl SyncSession {
         }))
     }
 
-    fn perform_sync(&mut self, strategy: Box<dyn SyncStrategy>) -> Result<(), SyncError> {
-        let (ok_count, err_count) = strategy.perform_sync(self);
+    async fn perform_sync(&mut self, strategy: Box<dyn SyncStrategy>) -> Result<(), SyncError> {
+        let (ok_count, err_count) = strategy.perform_sync(self).await;
         let skip_count = self.assets.len() - ok_count - err_count;
         log::info!(
             "Sync finished with {} synced, {} failed, {} skipped",
@@ -263,7 +267,7 @@ impl SyncSession {
         prev_state: &'a State,
         target: &'a TargetConfig,
         check_local_path: &'a bool,
-    ) -> Box<dyn Iterator<Item = (&'a AssetIdent, &'a mut Asset)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (&'a AssetIdent, &'a mut Asset)> + 'a + Send> {
         Box::new(assets.iter_mut().filter(|(ident, asset)| {
             if *force {
                 log::trace!("Asset '{}' will sync (forced)", ident);
@@ -333,8 +337,9 @@ fn raise_error(error: impl Into<anyhow::Error>, errors: &mut Vec<anyhow::Error>)
     errors.push(error);
 }
 
+#[async_trait]
 trait SyncStrategy {
-    fn perform_sync(&self, session: &mut SyncSession) -> (usize, usize);
+    async fn perform_sync(&self, session: &mut SyncSession) -> (usize, usize);
 }
 
 struct LocalSyncStrategy {
@@ -349,8 +354,9 @@ impl LocalSyncStrategy {
             .map_err(|e| e.into())
     }
 }
+#[async_trait]
 impl SyncStrategy for LocalSyncStrategy {
-    fn perform_sync(&self, session: &mut SyncSession) -> (usize, usize) {
+    async fn perform_sync(&self, session: &mut SyncSession) -> (usize, usize) {
         let target_key = session.target.key.clone();
 
         log::debug!("Performing local sync for target '{target_key}'");
@@ -417,44 +423,220 @@ impl SyncStrategy for LocalSyncStrategy {
 }
 
 struct RobloxSyncStrategy {
-    api_key: SecretString,
+    assets: RbxAssets,
     creator: AssetCreator,
 }
-impl SyncStrategy for RobloxSyncStrategy {
-    fn perform_sync<'a>(&self, session: &mut SyncSession) -> (usize, usize) {
-        let cloud = RbxCloud::new(self.api_key.expose_secret());
+impl RobloxSyncStrategy {
+    fn new(api_key: &SecretString, creator: AssetCreator) -> Self {
+        let cloud = RbxCloud::new(api_key.expose_secret());
         let assets = cloud.assets();
 
-        for (ident, asset) in SyncSession::iter_needs_sync(
+        Self { assets, creator }
+    }
+}
+#[async_trait]
+impl SyncStrategy for RobloxSyncStrategy {
+    async fn perform_sync(&self, session: &mut SyncSession) -> (usize, usize) {
+        let target_key = Arc::new(session.target.key.clone());
+
+        log::debug!("Performing Roblox sync for target '{target_key}'");
+
+        let mut ok_count = 0;
+        let mut err_count = 0;
+
+        let max_create_failures = 3;
+        let max_get_failures = 3;
+
+        let create_ratelimit = Arc::new(RateLimiter::new(60, Duration::from_secs(60)));
+        let get_ratelimit = Arc::new(RateLimiter::new(60, Duration::from_secs(60)));
+
+        let mut futures: FuturesUnordered<_> = SyncSession::iter_needs_sync(
             &session.force_sync,
             &mut session.assets,
             &session.prev_state,
             &session.target,
             &false,
-        ) {}
+        )
+        .map(|(ident, asset)| {
+            let create_ratelimit = create_ratelimit.clone();
+            let get_ratelimit = get_ratelimit.clone();
+            let target_key = target_key.clone();
 
-        todo!();
+            // Map the needs_sync iterator to a collection of futures
+            async move {
+                // Loop until we've had too many errors
+                for create_idx in 0..max_create_failures {
+                    // If we're retrying, wait a bit first
+                    if create_idx > 0 {
+                        tokio::time::sleep(Duration::from_secs(3)).await;
+                    }
 
-        // let result = assets
-        //     .create(&CreateAsset {
-        //         asset: AssetCreation {
-        //             asset_type: AssetType::DecalPng,
-        //             display_name: "test".to_string(),
-        //             description: "test123".to_string(),
-        //             creation_context: AssetCreationContext {
-        //                 creator: AssetCreator::User(AssetUserCreator {
-        //                     user_id: user_id.to_owned(),
-        //                 }),
-        //                 expected_price: None,
-        //             },
-        //         },
-        //         filepath: "./test.png".to_string(),
-        //     })
-        //     .await;
+                    log::debug!("CreateAsset {}: starting attempt {}", ident, create_idx + 1);
 
-        // dbg!(result);
+                    match roblox_create_asset(self, ident, asset, create_ratelimit.clone()).await {
+                        Ok(operation_id) => {
+                            log::trace!("CreateAsset {ident}: returned operation {operation_id}");
 
-        // Ok(())
+                            let operation_id = Arc::new(operation_id);
+
+                            let mut get_idx = 0;
+                            let mut get_failures = 0;
+
+                            // Loop until the asset finishes with an ID or we fail too much
+                            loop {
+                                get_idx += 1;
+
+                                let wait = 2_u64.pow(get_idx);
+
+                                log::debug!(
+                                    "GetAsset {}: starting attempt {} in {}s",
+                                    ident,
+                                    get_idx,
+                                    wait,
+                                );
+
+                                tokio::time::sleep(Duration::from_secs(wait)).await;
+
+                                match roblox_get_asset(
+                                    self,
+                                    ident,
+                                    operation_id.clone(),
+                                    get_ratelimit.clone(),
+                                )
+                                .await
+                                {
+                                    Ok(asset_id) => {
+                                        log::info!(
+                                            "Uploaded {} as rbxassetid://{}",
+                                            ident,
+                                            asset_id
+                                        );
+
+                                        asset.targets.insert(
+                                            target_key.to_string(),
+                                            TargetState {
+                                                hash: asset.hash.clone(),
+                                                id: format!("rbxassetid://{}", asset_id),
+                                                local_path: None,
+                                            },
+                                        );
+
+                                        return Ok(());
+                                    }
+                                    Err(e) => {
+                                        // Don't consider unfinished uploads to be errors
+                                        if matches!(e, SyncError::UploadNotDone) {
+                                            log::trace!("GetAsset {}: not done yet", ident);
+                                        } else {
+                                            log::error!("GetAsset {}: error: {}", ident, e);
+
+                                            get_failures += 1;
+
+                                            // API failed too many times, give up
+                                            if get_failures >= max_get_failures {
+                                                log::error!(
+                                                    "GetAsset {}: failed too many times",
+                                                    ident
+                                                );
+                                                return Err(SyncError::UploadFailed);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("CreateAsset {}: error: {}", ident, e);
+                        }
+                    }
+                }
+
+                log::error!("CreateAsset {}: failed too many times", &ident);
+                Err(SyncError::UploadFailed)
+            }
+        })
+        .collect();
+
+        // Wait for all futures to finish and log errors
+        while let Some(result) = futures.next().await {
+            match result {
+                Ok(()) => {
+                    ok_count += 1;
+                }
+                Err(e) => {
+                    raise_error(e, &mut session.errors);
+                    err_count += 1;
+                }
+            }
+        }
+
+        (ok_count, err_count)
+    }
+}
+async fn roblox_create_asset(
+    strategy: &RobloxSyncStrategy,
+    ident: &AssetIdent,
+    asset: &Asset,
+    create_ratelimit: Arc<RateLimiter>,
+) -> Result<String, SyncError> {
+    create_ratelimit.wait().await;
+
+    log::trace!("CreateAsset {ident}: sending request");
+
+    let result = strategy
+        .assets
+        .create(&CreateAsset {
+            asset: AssetCreation {
+                asset_type: AssetType::DecalPng,
+                display_name: ident.last_component().to_string(),
+                description: "Uploaded by Runway.".to_string(),
+                creation_context: AssetCreationContext {
+                    creator: strategy.creator.clone(),
+                    expected_price: Some(0),
+                },
+            },
+            filepath: asset.path.to_string_lossy().to_string(),
+        })
+        .await?;
+
+    let operation_path = result.path.ok_or_else(|| SyncError::RobloxApi)?;
+
+    let operation_id = operation_path
+        .strip_prefix("operations/")
+        .expect("Roblox API returned unexpected value");
+
+    let operation_id = operation_id.to_string();
+
+    Ok(operation_id)
+}
+async fn roblox_get_asset(
+    strategy: &RobloxSyncStrategy,
+    ident: &AssetIdent,
+    operation_id: Arc<String>,
+    get_ratelimit: Arc<RateLimiter>,
+) -> Result<String, SyncError> {
+    get_ratelimit.wait().await;
+
+    log::trace!("GetAsset {ident}: sending request");
+
+    let response = strategy
+        .assets
+        .get(&GetAsset {
+            operation_id: operation_id.to_string(),
+        })
+        .await?;
+
+    if let Some(r) = &response.response {
+        Ok(r.asset_id.clone())
+    } else {
+        let done = response.done.unwrap_or(false);
+
+        if !done {
+            Err(SyncError::UploadNotDone)
+        } else {
+            log::warn!("GetAsset {ident}: unexpected response: {:#?}", response);
+            Err(SyncError::UploadFailed)
+        }
     }
 }
 
@@ -475,6 +657,12 @@ pub enum SyncError {
 
     #[error("Matched file at {} is not supported", .path.display())]
     UnsupportedFile { path: PathBuf },
+
+    #[error("Failed to upload file")]
+    UploadFailed,
+
+    #[error("Upload not finished")]
+    UploadNotDone,
 
     #[error("Sync finished with {} error(s)", .error_count)]
     HadErrors { error_count: usize },
@@ -508,4 +696,13 @@ pub enum SyncError {
         #[from]
         source: roblox_install::Error,
     },
+
+    #[error(transparent)]
+    RbxCloud {
+        #[from]
+        source: rbxcloud::rbx::error::Error,
+    },
+
+    #[error("Roblox API error")]
+    RobloxApi,
 }

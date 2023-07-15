@@ -5,19 +5,23 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.71"
+arl = "0.1.0"
+async-trait = "0.1.71"
 blake3 = "1.4.1"
 clap = { version = "4.3.11", features = ["derive", "env"] }
 clap-verbosity-flag = "2.0.1"
 debug-ignore = "1.0.5"
+futures = "0.3.28"
 ignore = "0.4.20"
 log = "0.4.19"
 notify = "6.0.1"
 pretty_env_logger = "0.5.0"
-rbxcloud = "0.5.0"
+# rbxcloud = "0.5.0"
+rbxcloud = { git = "https://github.com/kennethloeffler/rbxcloud.git", rev = "5aeef87" }
 roblox_install = "1.0.0"
 secrecy = "0.8.0"
 serde = { version = "1.0.171", features = ["derive", "rc"] }
 thiserror = "1.0.43"
-tokio = { version = "1.29.1", features = ["macros", "rt", "fs", "sync", "signal"] }
+tokio = { version = "1.29.1", features = ["macros", "rt", "fs", "sync", "signal", "time"] }
 toml = "0.7.6"
 unicode-ident = "1.0.10"

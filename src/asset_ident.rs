@@ -35,6 +35,16 @@ impl AssetIdent {
         p.set_file_name(file_name);
         p
     }
+
+    // Used for display name in Roblox uploads
+    pub fn last_component(&self) -> &str {
+        self.0.split('/').last().unwrap()
+    }
+
+    pub fn extension(&self) -> Option<String> {
+        let p: PathBuf = self.as_ref().into();
+        p.extension().map(|e| e.to_string_lossy().to_string())
+    }
 }
 
 impl AsRef<str> for AssetIdent {

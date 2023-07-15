@@ -174,7 +174,7 @@ pub async fn watch(options: WatchOptions) -> Result<(), WatchError> {
         let sync_options2 = sync_options.clone();
         let config2 = config.clone();
         let target2 = target.clone();
-        Some(tokio::spawn(async move {
+        Some(tokio::task::spawn_local(async move {
             commands::sync_with_config(&sync_options2, &config2, &target2).await
         }))
     };
