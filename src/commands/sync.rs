@@ -241,7 +241,8 @@ impl SyncSession {
     }
 
     async fn perform_sync(&mut self, strategy: Box<dyn SyncStrategy>) -> Result<(), SyncError> {
-        let (ok_count, err_count) = strategy.perform_sync(self).await;
+        let fut = strategy.perform_sync(self);
+        let (ok_count, err_count) = fut.await;
         let skip_count = self.assets.len() - ok_count - err_count;
         log::info!(
             "Sync finished with {} synced, {} failed, {} skipped",
@@ -329,7 +330,7 @@ fn raise_error(error: impl Into<anyhow::Error>, errors: &mut Vec<anyhow::Error>)
 }
 
 #[async_trait]
-trait SyncStrategy {
+trait SyncStrategy: Send {
     async fn perform_sync(&self, session: &mut SyncSession) -> (usize, usize);
 }
 
