@@ -21,6 +21,7 @@ use rbxcloud::rbx::{
 };
 use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
+use tokio::time::Instant;
 
 use crate::{
     asset_ident::{replace_slashes, AssetIdent},
@@ -79,6 +80,8 @@ pub async fn sync_with_config(
     config: &Config,
     target: &TargetConfig,
 ) -> Result<(), SyncError> {
+    let start_time = Instant::now();
+
     let strategy: Box<dyn SyncStrategy + Send> = match target.r#type {
         TargetType::Local => {
             let local_path = config.root_path().join(".runway");
@@ -122,6 +125,9 @@ pub async fn sync_with_config(
     if let Err(e) = codegen::generate_all(&config, &state, &target) {
         session.raise_error(e);
     }
+
+    let elapsed = start_time.elapsed();
+    log::info!("Sync finished in {:?}", elapsed);
 
     if session.errors.is_empty() {
         Ok(())
@@ -252,7 +258,7 @@ impl SyncSession {
         let (ok_count, err_count) = fut.await;
         let skip_count = self.assets.len() - ok_count - err_count;
         log::info!(
-            "Sync finished with {} synced, {} failed, {} skipped",
+            "Finished with {} synced, {} failed, {} skipped",
             ok_count,
             err_count,
             skip_count,
