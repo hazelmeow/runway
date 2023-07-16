@@ -18,7 +18,7 @@ pub fn symlink_content_folders<P: AsRef<Path>>(
 
     let content_folders = get_content_folders()?;
 
-    fs::create_dir_all(&local_path.as_ref().parent().unwrap())?;
+    fs::create_dir_all(&local_path.as_ref())?;
 
     for content_folder in content_folders {
         let mut link_path = content_folder.join(".runway");
