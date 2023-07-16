@@ -10,6 +10,7 @@ mod codegen;
 mod commands;
 mod config;
 mod state;
+mod symlink;
 
 use crate::cli::{Cli, Subcommand};
 

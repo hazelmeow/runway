@@ -19,7 +19,6 @@ use rbxcloud::rbx::{
     },
     CreateAsset, GetAsset, RbxAssets, RbxCloud,
 };
-use roblox_install::RobloxStudio;
 use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
 
@@ -29,6 +28,7 @@ use crate::{
     codegen,
     config::{Config, ConfigError, TargetConfig, TargetType},
     state::{AssetState, State, StateError, TargetState},
+    symlink::{symlink_content_folders, SymlinkError},
 };
 
 #[derive(Debug)]
@@ -79,8 +79,14 @@ pub async fn sync_with_config(
     config: &Config,
     target: &TargetConfig,
 ) -> Result<(), SyncError> {
-    let strategy: Box<dyn SyncStrategy> = match target.r#type {
-        TargetType::Local => Box::new(LocalSyncStrategy::new()?),
+    let strategy: Box<dyn SyncStrategy + Send> = match target.r#type {
+        TargetType::Local => {
+            let local_path = config.root_path().join(".runway");
+
+            symlink_content_folders(&config, &local_path)?;
+
+            Box::new(LocalSyncStrategy::new(local_path))
+        }
         TargetType::Roblox => {
             let Some(api_key) = &options.sync_or_watch.api_key else {
 				return Err(SyncError::MissingApiKey);
@@ -110,6 +116,7 @@ pub async fn sync_with_config(
 
     session.find_assets()?;
     session.perform_sync(strategy).await?;
+
     let state = session.write_state()?;
 
     if let Err(e) = codegen::generate_all(&config, &state, &target) {
@@ -333,17 +340,12 @@ fn raise_error(error: impl Into<anyhow::Error>, errors: &mut Vec<anyhow::Error>)
 trait SyncStrategy: Send {
     async fn perform_sync(&self, session: &mut SyncSession) -> (usize, usize);
 }
-
 struct LocalSyncStrategy {
-    content_path: PathBuf,
+    local_path: PathBuf,
 }
 impl LocalSyncStrategy {
-    fn new() -> Result<Self, SyncError> {
-        RobloxStudio::locate()
-            .map(|studio| LocalSyncStrategy {
-                content_path: studio.content_path().into(),
-            })
-            .map_err(|e| e.into())
+    fn new(local_path: PathBuf) -> Self {
+        LocalSyncStrategy { local_path }
     }
 }
 #[async_trait]
@@ -362,8 +364,8 @@ impl SyncStrategy for LocalSyncStrategy {
             .as_secs()
             .to_string();
 
-        let mut base_path = PathBuf::from(".runway");
-        base_path.push(session.config.name.clone());
+        let mut base_content_path = PathBuf::from(".runway");
+        base_content_path.push(session.config.name.clone());
 
         let mut ok_count = 0;
         let mut err_count = 0;
@@ -376,15 +378,16 @@ impl SyncStrategy for LocalSyncStrategy {
             &true,
         ) {
             let result: Result<(), SyncError> = (|| {
-                let asset_path = base_path.join(ident.with_cache_bust(&timestamp));
-                let full_path = self.content_path.join(&asset_path);
+                let filename = ident.with_cache_bust(&timestamp);
+                let content_path = base_content_path.join(&filename);
+                let local_file_path = self.local_path.join(&filename);
 
                 log::debug!("Syncing {}", &ident);
 
-                fs::create_dir_all(&full_path.parent().unwrap())?;
-                fs::write(&full_path, &asset.contents)?;
+                fs::create_dir_all(&local_file_path.parent().unwrap())?;
+                fs::write(&local_file_path, &asset.contents)?;
 
-                log::info!("Copied {} to {}", &ident, &asset_path.display());
+                log::info!("Copied {} to {}", &ident, &content_path.display());
 
                 asset.targets.insert(
                     target_key.clone(),
@@ -392,9 +395,9 @@ impl SyncStrategy for LocalSyncStrategy {
                         hash: asset.hash.clone(),
                         id: format!(
                             "rbxasset://{}",
-                            replace_slashes(asset_path.to_string_lossy().to_string())
+                            replace_slashes(content_path.to_string_lossy().to_string())
                         ),
-                        local_path: Some(full_path),
+                        local_path: Some(local_file_path),
                     },
                 );
 
@@ -675,6 +678,12 @@ pub enum SyncError {
     },
 
     #[error(transparent)]
+    SymlinkError {
+        #[from]
+        source: SymlinkError,
+    },
+
+    #[error(transparent)]
     Io {
         #[from]
         source: std::io::Error,
@@ -684,12 +693,6 @@ pub enum SyncError {
     Ignore {
         #[from]
         source: ignore::Error,
-    },
-
-    #[error(transparent)]
-    RobloxInstall {
-        #[from]
-        source: roblox_install::Error,
     },
 
     #[error(transparent)]

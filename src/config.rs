@@ -15,7 +15,7 @@ static CONFIG_FILENAME: &str = "runway.toml";
 #[derive(Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    /// A name for this project. This is used as a prefix during local syncs.
+    /// A name for this project. This is used as a namespace during local syncs.
     pub name: String,
 
     /// A list of targets to choose from when syncing.
