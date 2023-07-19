@@ -102,7 +102,9 @@ fn generate_tree(
 #[serde(rename_all = "lowercase")]
 pub enum CodegenFormat {
     Json,
+    #[serde(alias = "lua")]
     Luau,
+    #[serde(alias = "ts")]
     Typescript,
 }
 
