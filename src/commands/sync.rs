@@ -89,7 +89,7 @@ pub async fn sync_with_config(
         TargetType::Local => {
             let local_path = config.root_path().join(".runway");
 
-            symlink_content_folders(&config, &local_path)?;
+            symlink_content_folders(config, &local_path)?;
 
             Box::new(LocalSyncStrategy::new(local_path))
         }
@@ -118,14 +118,14 @@ pub async fn sync_with_config(
         }
     };
 
-    let mut session = SyncSession::new(options, &config, &target)?;
+    let mut session = SyncSession::new(options, config, target)?;
 
     session.find_assets()?;
     session.perform_sync(strategy).await?;
 
     let state = session.write_state()?;
 
-    if let Err(e) = codegen::generate_all(&config, &state, &target) {
+    if let Err(e) = codegen::generate_all(config, &state, target) {
         session.raise_error(e);
     }
 
@@ -165,7 +165,7 @@ impl SyncSession {
     ) -> Result<Self, SyncError> {
         log::info!("Starting sync for target '{}'", target.key);
 
-        let prev_state = match State::read_from_config(&config) {
+        let prev_state = match State::read_from_config(config) {
             Ok(m) => m,
             Err(e) => {
                 return Err(e.into());
@@ -201,7 +201,7 @@ impl SyncSession {
         for result in walker {
             match result {
                 Ok(file) => {
-                    match Self::process_entry(&self.prev_state, &self.config.root_path(), file) {
+                    match Self::process_entry(&self.prev_state, self.config.root_path(), file) {
                         Ok(Some(i)) => {
                             log::trace!("Found asset '{}'", i.ident);
 
@@ -282,7 +282,7 @@ impl SyncSession {
                 return true;
             }
 
-            if let Some(prev) = prev_state.assets.get(&ident) {
+            if let Some(prev) = prev_state.assets.get(ident) {
                 if let Some(prev_state) = prev.targets.get(&target.key) {
                     // If the hashes differ, sync again
                     if prev_state.hash != asset.hash {
@@ -318,20 +318,22 @@ impl SyncSession {
     }
 
     fn write_state(&self) -> Result<State, SyncError> {
-        let mut state = State::default();
+        let state = State {
+            assets: self
+                .assets
+                .iter()
+                .map(|(ident, input)| {
+                    (
+                        ident.clone(),
+                        AssetState {
+                            targets: input.targets.clone(),
+                        },
+                    )
+                })
+                .collect(),
 
-        state.assets = self
-            .assets
-            .iter()
-            .map(|(ident, input)| {
-                (
-                    ident.clone(),
-                    AssetState {
-                        targets: input.targets.clone(),
-                    },
-                )
-            })
-            .collect();
+            ..Default::default()
+        };
 
         state.write_for_config(&self.config)?;
 
@@ -393,7 +395,7 @@ impl SyncStrategy for LocalSyncStrategy {
 
                 log::debug!("Syncing {}", &ident);
 
-                fs::create_dir_all(&local_file_path.parent().unwrap())?;
+                fs::create_dir_all(local_file_path.parent().unwrap())?;
                 fs::write(&local_file_path, &asset.contents)?;
 
                 log::info!("Copied {} to {}", &ident, &content_path.display());
@@ -435,7 +437,7 @@ impl RobloxSyncStrategy {
     fn new(api_key: &SecretString, creator: AssetCreator) -> Self {
         let cloud = RbxCloud::new(api_key.expose_secret());
         let assets = cloud.assets();
-        let asset_delivery: Lazy<AssetDelivery> = Lazy::new(|| return AssetDelivery::new());
+        let asset_delivery: Lazy<AssetDelivery> = Lazy::new(AssetDelivery::new);
 
         Self {
             assets,

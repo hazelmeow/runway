@@ -18,7 +18,7 @@ pub fn symlink_content_folders<P: AsRef<Path>>(
 
     let content_folders = get_content_folders()?;
 
-    fs::create_dir_all(&local_path.as_ref())?;
+    fs::create_dir_all(local_path.as_ref())?;
 
     for content_folder in content_folders {
         let mut link_path = content_folder.join(".runway");
@@ -34,7 +34,7 @@ pub fn symlink_content_folders<P: AsRef<Path>>(
 
         log::trace!("Symlinking {}", link_path.display());
 
-        fs::create_dir_all(&link_path.parent().unwrap())?;
+        fs::create_dir_all(link_path.parent().unwrap())?;
 
         symlink_dir(&local_path, link_path)?;
     }

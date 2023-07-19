@@ -66,41 +66,39 @@ impl State {
 
         log::debug!("Loading state from {}", folder_path.display());
 
-        let mut main_state = match State::read_from_file(&folder_path, STATE_FILENAME) {
+        let mut main_state = match State::read_from_file(folder_path, STATE_FILENAME) {
             Ok(m) => m,
             Err(e) => {
                 if e.is_not_found() {
                     log::debug!("{} was not found, creating new", STATE_FILENAME);
                     State::default()
                 } else {
-                    return Err(e.into());
+                    return Err(e);
                 }
             }
         };
-        let local_state = match State::read_from_file(&folder_path, STATE_FILENAME_LOCAL) {
+        let local_state = match State::read_from_file(folder_path, STATE_FILENAME_LOCAL) {
             Ok(m) => m,
             Err(e) => {
                 if e.is_not_found() {
                     log::debug!("{} was not found, creating new", STATE_FILENAME_LOCAL);
                     State::default()
                 } else {
-                    return Err(e.into());
+                    return Err(e);
                 }
             }
         };
 
         // Merge local into main
         for (ident, asset) in main_state.assets.iter_mut() {
-            if let Some(local_asset) = local_state.assets.get(&ident) {
+            if let Some(local_asset) = local_state.assets.get(ident) {
                 asset.targets.extend(local_asset.targets.clone());
             }
         }
 
         // Add items only in local to main
         for (ident, asset) in local_state.assets {
-            if !main_state.assets.contains_key(&ident) {
-                main_state.assets.insert(ident, asset);
-            }
+            main_state.assets.entry(ident).or_insert(asset);
         }
 
         Ok(main_state)
@@ -136,11 +134,11 @@ impl State {
 
         log::debug!("Writing state to {}", folder_path.display());
 
-        let main_state = self.filter_scope(&config, false);
-        main_state.write_to_file(&folder_path, false)?;
+        let main_state = self.filter_scope(config, false);
+        main_state.write_to_file(folder_path, false)?;
 
-        let local_state = self.filter_scope(&config, true);
-        local_state.write_to_file(&folder_path, true)?;
+        let local_state = self.filter_scope(config, true);
+        local_state.write_to_file(folder_path, true)?;
 
         Ok(())
     }

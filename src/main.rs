@@ -1,8 +1,8 @@
+#![allow(clippy::result_large_err)]
+
 use std::process::ExitCode;
 
 use clap::Parser;
-use log;
-use pretty_env_logger;
 
 mod api;
 mod asset_ident;
@@ -38,5 +38,5 @@ async fn main() -> ExitCode {
         }
     };
 
-    return ExitCode::SUCCESS;
+    ExitCode::SUCCESS
 }

@@ -22,14 +22,14 @@ fn format_object(obj: &Object, indent_level: usize) -> String {
     let mut s = String::new();
     s.push_str("{\n");
 
-    let mut iter = obj.0.iter().peekable();
+    let iter = obj.0.iter().peekable();
 
-    while let Some((k, v)) = iter.next() {
+    for (k, v) in iter {
         s.push_str(&(indent_plus1.clone() + &format_key(k) + ": "));
 
         match v {
             Value::Object(subobj) => {
-                s.push_str(&format_object(&subobj, indent_level + 1));
+                s.push_str(&format_object(subobj, indent_level + 1));
                 s.push_str(",\n");
             }
             Value::Id(id) => {
@@ -51,7 +51,7 @@ fn is_id_part(c: char) -> bool {
     unicode_ident::is_xid_continue(c) || c == '$'
 }
 fn is_id<S: AsRef<str>>(s: S) -> bool {
-    s.as_ref().len() > 0
+    !s.as_ref().is_empty()
         && is_id_start(s.as_ref().chars().next().unwrap())
         && s.as_ref().chars().skip(1).all(is_id_part)
 }

@@ -174,7 +174,7 @@ impl Config {
     }
 
     pub fn root_path(&self) -> &Path {
-        &self.file_path.parent().unwrap()
+        self.file_path.parent().unwrap()
     }
 }
 

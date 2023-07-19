@@ -19,20 +19,20 @@ fn format_object(obj: &Object, indent_level: usize) -> String {
 
         match v {
             Value::Object(subobj) => {
-                s.push_str(&format_object(&subobj, indent_level + 1));
+                s.push_str(&format_object(subobj, indent_level + 1));
 
                 if iter.peek().is_some() {
-                    s.push_str(",");
+                    s.push(',');
                 }
-                s.push_str("\n");
+                s.push('\n');
             }
             Value::Id(id) => {
                 s.push_str(&format_string(id));
 
                 if iter.peek().is_some() {
-                    s.push_str(",");
+                    s.push(',');
                 }
-                s.push_str("\n");
+                s.push('\n');
             }
         }
     }

@@ -29,7 +29,7 @@ struct Object(HashMap<String, Value>);
 fn transform_ident(ident: &AssetIdent, config: &CodegenConfig) -> String {
     let mut path = PathBuf::from_str(ident.as_ref()).unwrap();
     path = if let Some(prefix) = &config.strip_prefix {
-        if let Ok(t) = path.strip_prefix(&prefix) {
+        if let Ok(t) = path.strip_prefix(prefix) {
             t.to_path_buf()
         } else {
             log::warn!(
@@ -62,12 +62,12 @@ fn generate_tree(
 
         let mut head = &mut root;
 
-        let ident_string = transform_ident(&ident, config);
+        let ident_string = transform_ident(ident, config);
 
         let key = if config.flatten {
             ident_string
         } else {
-            let mut parts = ident_string.split("/").collect::<Vec<_>>();
+            let mut parts = ident_string.split('/').collect::<Vec<_>>();
             let last_part = parts.pop().ok_or_else(|| CodegenError::TreeStructure)?;
 
             for part in parts {
@@ -116,7 +116,7 @@ pub fn generate_all(
     log::info!("Generating {} outputs", config.codegens.len());
 
     for codegen in &config.codegens {
-        match generate(&state, &codegen, &target) {
+        match generate(state, codegen, target) {
             Ok(_) => {}
             Err(e) => {
                 log::error!("{}", e);
@@ -146,7 +146,7 @@ fn generate(
         config.path.display()
     );
 
-    let tree = generate_tree(&state, &config, &target)?;
+    let tree = generate_tree(state, config, target)?;
 
     let contents = match config.format {
         CodegenFormat::Json => generate_json(&tree),

@@ -22,11 +22,7 @@ use super::SyncError;
 
 fn descendant_matches(path: &PathBuf, overrides: Override) -> bool {
     // Check if any descendants match our glob
-    configure_walker(path, overrides)
-        .build()
-        .into_iter()
-        .next()
-        .is_some()
+    configure_walker(path, overrides).build().next().is_some()
 }
 
 fn build_watcher(
@@ -48,13 +44,13 @@ fn build_watcher(
                     if event_path.is_dir() {
                         // Check if any descendant of this path matches the glob
                         // We need this to detect changes to inputs when moving a parent folder
-                        descendant_matches(&event_path, glob.clone())
+                        descendant_matches(event_path, glob.clone())
                     } else {
                         // Check if the event path matches the glob
-                        match glob.matched(event_path, event_path.is_dir()) {
-                            ignore::Match::Whitelist(_) => true,
-                            _ => false,
-                        }
+                        matches!(
+                            glob.matched(event_path, event_path.is_dir()),
+                            ignore::Match::Whitelist(_)
+                        )
                     }
                 });
 
@@ -160,7 +156,7 @@ pub async fn watch(options: WatchOptions) -> Result<(), WatchError> {
     let _watchers = config
         .inputs
         .iter()
-        .map(|input_config| build_watcher(&config, &input_config, notify_tx.clone()))
+        .map(|input_config| build_watcher(&config, input_config, notify_tx.clone()))
         .collect::<Result<Vec<RecommendedWatcher>, WatchError>>()?;
 
     // The join handle of the sync task if a sync is running

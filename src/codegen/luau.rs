@@ -10,7 +10,7 @@ pub(super) fn generate_luau(tree: &Value) -> Result<String, CodegenError> {
     s.push_str(HEADER_COMMENT);
     s.push_str("\nreturn ");
     s.push_str(&format_object(root, 0));
-    s.push_str("\n");
+    s.push('\n');
 
     Ok(s)
 }
@@ -22,14 +22,14 @@ fn format_object(obj: &Object, indent_level: usize) -> String {
     let mut s = String::new();
     s.push_str("{\n");
 
-    let mut iter = obj.0.iter().peekable();
+    let iter = obj.0.iter().peekable();
 
-    while let Some((k, v)) = iter.next() {
+    for (k, v) in iter {
         s.push_str(&(indent_plus1.clone() + "[" + &format_string(k) + "] = "));
 
         match v {
             Value::Object(subobj) => {
-                s.push_str(&format_object(&subobj, indent_level + 1));
+                s.push_str(&format_object(subobj, indent_level + 1));
                 s.push_str(",\n");
             }
             Value::Id(id) => {
