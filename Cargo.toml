@@ -15,9 +15,12 @@ futures = "0.3.28"
 ignore = "0.4.20"
 log = "0.4.19"
 notify = "6.0.1"
+once_cell = "1.18.0"
 pretty_env_logger = "0.5.0"
 # rbxcloud = "0.5.0"
 rbxcloud = { git = "https://github.com/kennethloeffler/rbxcloud.git", rev = "5aeef87" }
+regex = "1.9.1"
+reqwest = "0.11.18"
 secrecy = "0.8.0"
 serde = { version = "1.0.171", features = ["derive", "rc"] }
 thiserror = "1.0.43"

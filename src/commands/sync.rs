@@ -13,9 +13,11 @@ use ignore::{
     overrides::{Override, OverrideBuilder},
     DirEntry, WalkBuilder,
 };
+use once_cell::sync::Lazy;
 use rbxcloud::rbx::{
     assets::{
-        AssetCreation, AssetCreationContext, AssetCreator, AssetGroupCreator, AssetUserCreator,
+        AssetCreation, AssetCreationContext, AssetCreator, AssetGroupCreator, AssetType,
+        AssetUserCreator,
     },
     CreateAsset, GetAsset, RbxAssets, RbxCloud,
 };
@@ -24,6 +26,7 @@ use thiserror::Error;
 use tokio::time::Instant;
 
 use crate::{
+    api::AssetDelivery,
     asset_ident::{replace_slashes, AssetIdent},
     cli::SyncOptions,
     codegen,
@@ -426,13 +429,19 @@ impl SyncStrategy for LocalSyncStrategy {
 struct RobloxSyncStrategy {
     assets: RbxAssets,
     creator: AssetCreator,
+    asset_delivery: Lazy<AssetDelivery>,
 }
 impl RobloxSyncStrategy {
     fn new(api_key: &SecretString, creator: AssetCreator) -> Self {
         let cloud = RbxCloud::new(api_key.expose_secret());
         let assets = cloud.assets();
+        let asset_delivery: Lazy<AssetDelivery> = Lazy::new(|| return AssetDelivery::new());
 
-        Self { assets, creator }
+        Self {
+            assets,
+            creator,
+            asset_delivery,
+        }
     }
 }
 #[async_trait]
@@ -447,6 +456,7 @@ impl SyncStrategy for RobloxSyncStrategy {
 
         let max_create_failures = 3;
         let max_get_failures = 3;
+        let max_textureid_failures = 3;
 
         let create_ratelimit = Arc::new(RateLimiter::new(60, Duration::from_secs(60)));
         let get_ratelimit = Arc::new(RateLimiter::new(60, Duration::from_secs(60)));
@@ -507,17 +517,33 @@ impl SyncStrategy for RobloxSyncStrategy {
                                 .await
                                 {
                                     Ok(asset_id) => {
-                                        log::info!(
+                                        let mut final_id = asset_id;
+
+                                        if matches!(
+                                            asset.ident.asset_type(),
+                                            AssetType::DecalBmp
+                                                | AssetType::DecalPng
+                                                | AssetType::DecalJpeg
+                                                | AssetType::DecalTga
+                                        ) {
+											log::debug!("Uploaded {} as rbxassetid://{}, mapping to texture ID", &ident, &final_id);
+
+											let image_id = get_texture_with_retry(max_textureid_failures, &self.asset_delivery, &final_id).await?;
+
+                                            final_id = image_id;
+                                        }
+
+										log::info!(
                                             "Uploaded {} as rbxassetid://{}",
                                             ident,
-                                            asset_id
+                                            final_id
                                         );
 
                                         asset.targets.insert(
                                             target_key.to_string(),
                                             TargetState {
                                                 hash: asset.hash.clone(),
-                                                id: format!("rbxassetid://{}", asset_id),
+                                                id: format!("rbxassetid://{}", final_id),
                                                 local_path: None,
                                             },
                                         );
@@ -639,6 +665,22 @@ async fn roblox_get_asset(
             Err(SyncError::UploadFailed)
         }
     }
+}
+async fn get_texture_with_retry(
+    max_textureid_failures: usize,
+    asset_delivery: &AssetDelivery,
+    asset_id: &String,
+) -> Result<String, SyncError> {
+    for _ in 0..max_textureid_failures {
+        match asset_delivery.get_texture(asset_id).await {
+            Ok(image_id) => return Ok(image_id),
+            Err(e) => {
+                log::error!("Error mapping decal ID to texture ID: {}", e)
+            }
+        }
+    }
+    // Failed all attempts
+    Err(SyncError::RobloxApi)
 }
 
 fn generate_asset_hash(content: &[u8]) -> String {

@@ -4,6 +4,7 @@ use clap::Parser;
 use log;
 use pretty_env_logger;
 
+mod api;
 mod asset_ident;
 mod cli;
 mod codegen;
