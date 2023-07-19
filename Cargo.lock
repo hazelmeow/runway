@@ -1218,7 +1218,8 @@ dependencies = [
 [[package]]
 name = "rbxcloud"
 version = "0.5.0"
-source = "git+https://github.com/kennethloeffler/rbxcloud.git?rev=5aeef87#5aeef878aa44b1a88b1266567d7b3ef2495f60f0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1618a180f7f2f8de550bfc39d147132b258725d21c177dbe5fce87ecda21653"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
