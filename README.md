@@ -14,7 +14,7 @@ Runway's input/output system should ideally be modular enough to build other too
 Install [Aftman](https://github.com/LPGhatguy/aftman),
 then add an entry to the `[tools]` section of `aftman.toml`:
 ```toml
-runway = "hazelmeow/runway-rbx@0.1.0"
+runway = "hazelmeow/runway@0.1.0"
 ```
 
 ### From releases
