@@ -82,6 +82,9 @@ containing the uploaded asset IDs and hashes of their contents for detecting cha
 The local state file should not be checked in to version control.
 The Roblox state file is useful for skipping uploading assets to Roblox that haven't changed.
 
+Local syncs will also create a `.runway` directory with copies of locally synced assets.
+This folder should not be checked in and can be safely deleted at any time.
+
 ### Global options
 
 * `-h`, `--help`, `-V`, `--version`
