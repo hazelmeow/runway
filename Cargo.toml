@@ -9,6 +9,10 @@ readme = "README.md"
 repository = "https://github.com/hazelmeow/runway"
 homepage = "https://github.com/hazelmeow/runway"
 
+[[bin]]
+name = "runway"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.71"
 arl = "0.1.0"
