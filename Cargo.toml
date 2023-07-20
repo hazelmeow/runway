@@ -1,7 +1,13 @@
 [package]
-name = "runway"
+name = "runway-rbx"
+description = "Asset manager for Roblox projects"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+
+readme = "README.md"
+repository = "https://github.com/hazelmeow/runway"
+homepage = "https://github.com/hazelmeow/runway"
 
 [dependencies]
 anyhow = "1.0.71"

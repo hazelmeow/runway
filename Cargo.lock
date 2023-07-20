@@ -1317,7 +1317,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "runway"
+name = "runway-rbx"
 version = "0.1.0"
 dependencies = [
  "anyhow",
