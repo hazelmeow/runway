@@ -68,6 +68,13 @@ fn get_content_folders() -> Result<Vec<PathBuf>, SymlinkError> {
     Ok(vec![root])
 }
 
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn get_content_folders() -> Result<Vec<PathBuf>, SymlinkError> {
+    log::warn!("Local sync is not currently supported on this platform.");
+
+    Ok(Vec::new())
+}
+
 /// Creates a symlink pointing to `target` at `link`.
 ///
 /// On Windows, this method creates an NTFS junction point instead of a symlink
