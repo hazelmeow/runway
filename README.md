@@ -18,7 +18,7 @@ runway = "hazelmeow/runway@0.1.0"
 ```
 
 ### From releases
-tba
+Pre-built binaries are available [here](https://github.com/hazelmeow/runway/releases).
 
 ### From source
 Clone the repository and run:
