@@ -1,12 +1,13 @@
 # Runway
-Runway is an asset manager for Roblox projects.
+Runway is an asset uploader for Roblox projects.
 
 It maps paths in your project to asset strings
 and supports fast local development or uploads using Open Cloud.
 
 Runway borrows from [Tarmac](https://github.com/rojo-rbx/tarmac)
-but doesn't aim to do resource compilation (spritesheet packing, alpha bleeding, DPI scaling, etc).
-Runway's input/output system should ideally be modular enough to build other tools on top of it.
+but doesn't do any resource compilation (spritesheet packing, alpha bleeding, DPI scaling, etc).
+Instead, Runway's inputs/outputs should (ideally) be simple and reliable enough
+to build other tools on top of them.
 
 ## Installation
 
