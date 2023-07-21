@@ -132,20 +132,23 @@ Watches a project for new/changed inputs and runs the sync process automatically
 
 ### Supported asset types
 
-All image and audio types should work but haven't been closely checked yet.
-Models aren't tested yet.
-
 See the [Open Cloud assets docs](https://create.roblox.com/docs/cloud/open-cloud/usage-assets) for more details.
 
-| Extension           | Local | Roblox |
-| ------------------- |:-----:|:------:|
-| `.png`              | Yes   | Yes    |
-| `.jpg`<br />`.jpeg` | ?     | ?      |
-| `.bmp`              | ?     | ?      |
-| `.tga`              | ?     | ?      |
-| `.mp3`              | Yes   | ?      |
-| `.ogg`              | Yes   | ?      |
-| `.fbx`              | ?     | ?      |
+`bmp` and `tga` images don't seem to work.
+Models haven't been tested yet.
+
+| Extension           | Local | Roblox  |
+| ------------------- |:-----:|:-------:|
+| `.png`              | Yes   | Yes     |
+| `.jpg`<br />`.jpeg` | Yes   | Yes     |
+| `.bmp`              | No    | No      |
+| `.tga`              | No    | No      |
+| `.mp3`              | Yes   | Yes[^1] |
+| `.ogg`              | Yes   | Yes[^1] |
+| `.fbx`              | ?     | ?       |
+
+[^1]: Some extra manual work might be necessary because of
+[audio asset privacy](https://create.roblox.com/docs/sound/assets#audio-asset-privacy-system)
 
 ## License
 Runway is available under the MIT license. See [LICENSE.txt](LICENSE.txt).
