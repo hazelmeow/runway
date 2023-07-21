@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::{
     asset_ident::AssetIdent,
+    codegen::typescript::generate_typescript_declaration,
     config::{CodegenConfig, Config, TargetConfig},
     state::State,
 };
@@ -106,6 +107,8 @@ pub enum CodegenFormat {
     Luau,
     #[serde(alias = "ts")]
     Typescript,
+    #[serde(alias = "d.ts")]
+    TypescriptDeclaration,
 }
 
 pub fn generate_all(
@@ -154,6 +157,7 @@ fn generate(
         CodegenFormat::Json => generate_json(&tree),
         CodegenFormat::Luau => generate_luau(&tree),
         CodegenFormat::Typescript => generate_typescript(&tree),
+        CodegenFormat::TypescriptDeclaration => generate_typescript_declaration(&tree),
     }?;
 
     fs::write(&config.path, contents)?;

@@ -62,7 +62,7 @@ key = "production"
 type = "roblox"
 ```
 
-Runway can output asset paths as `json`, `lua`, or `ts` files.
+Runway can output asset paths as `json`, `lua`, `ts`, or `d.ts` files.
 You can specify multiple outputs by adding more `[[codegen]]` sections.
 There are some additional options available per output:
 ```toml

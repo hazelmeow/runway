@@ -9,13 +9,25 @@ pub(super) fn generate_typescript(tree: &Value) -> Result<String, CodegenError> 
     let mut s = String::new();
     s.push_str(HEADER_COMMENT);
     s.push_str("\nexport default ");
-    s.push_str(&format_object(root, 0));
+    s.push_str(&format_object(root, 0, false));
     s.push_str(" as const;\n");
 
     Ok(s)
 }
 
-fn format_object(obj: &Object, indent_level: usize) -> String {
+pub(super) fn generate_typescript_declaration(tree: &Value) -> Result<String, CodegenError> {
+    let Value::Object(root) = tree else { panic!() };
+
+    let mut s = String::new();
+    s.push_str(HEADER_COMMENT);
+    s.push_str("\ndeclare const assets: ");
+    s.push_str(&format_object(root, 0, true));
+    s.push_str(";\n\nexport = assets;\n");
+
+    Ok(s)
+}
+
+fn format_object(obj: &Object, indent_level: usize, declaration: bool) -> String {
     let indent = "\t".repeat(indent_level);
     let indent_plus1 = "\t".repeat(indent_level + 1);
 
@@ -29,11 +41,15 @@ fn format_object(obj: &Object, indent_level: usize) -> String {
 
         match v {
             Value::Object(subobj) => {
-                s.push_str(&format_object(subobj, indent_level + 1));
+                s.push_str(&format_object(subobj, indent_level + 1, declaration));
                 s.push_str(",\n");
             }
             Value::Id(id) => {
-                s.push_str(&format_string(id));
+                if declaration {
+                    s.push_str("string");
+                } else {
+                    s.push_str(&format_string(id));
+                }
                 s.push_str(",\n");
             }
         }
