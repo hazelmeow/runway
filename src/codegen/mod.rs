@@ -164,6 +164,7 @@ fn generate(
         CodegenFormat::TypescriptDeclaration => generate_typescript_declaration(&tree),
     }?;
 
+    fs::create_dir_all(config.path.parent().unwrap())?;
     fs::write(&config.path, contents)?;
 
     Ok(())
