@@ -31,6 +31,11 @@ fn format_object(obj: &Object, indent_level: usize, declaration: bool) -> String
     let indent = "\t".repeat(indent_level);
     let indent_plus1 = "\t".repeat(indent_level + 1);
 
+    let line_ending = match declaration {
+        true => ';',
+        false => ',',
+    };
+
     let mut s = String::new();
     s.push_str("{\n");
 
@@ -42,7 +47,8 @@ fn format_object(obj: &Object, indent_level: usize, declaration: bool) -> String
         match v {
             Value::Object(subobj) => {
                 s.push_str(&format_object(subobj, indent_level + 1, declaration));
-                s.push_str(",\n");
+                s.push(line_ending);
+                s.push('\n');
             }
             Value::Id(id) => {
                 if declaration {
@@ -50,7 +56,8 @@ fn format_object(obj: &Object, indent_level: usize, declaration: bool) -> String
                 } else {
                     s.push_str(&format_string(id));
                 }
-                s.push_str(",\n");
+                s.push(line_ending);
+                s.push('\n');
             }
         }
     }
