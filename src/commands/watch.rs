@@ -89,7 +89,7 @@ async fn maybe_join_result<T>(maybe_handle: &mut Option<JoinHandle<T>>) -> Optio
 }
 
 pub async fn watch(options: WatchOptions) -> Result<(), WatchError> {
-    let config_path = match &options.sync_or_watch.config {
+    let config_path = match &options.project.config {
         Some(c) => c.to_owned(),
         None => std::env::current_dir()?,
     };
@@ -97,14 +97,15 @@ pub async fn watch(options: WatchOptions) -> Result<(), WatchError> {
 
     log::debug!("Loaded config at '{}'", config.file_path.display());
 
-    let Some(target) = config.targets.clone().into_iter().find(|t| t.key == options.sync_or_watch.target) else {
-		return Err(WatchError::UnknownTarget);
+    let Some(target) = config.targets.clone().into_iter().find(|t| t.key == options.project.target) else {
+		return Err(ConfigError::UnknownTarget.into());
 	};
     let target = Arc::new(target);
 
     let sync_options = Arc::new(SyncOptions {
         force: false,
-        sync_or_watch: options.sync_or_watch.clone(),
+        upload: options.upload.clone(),
+        project: options.project.clone(),
     });
 
     log::info!("Starting watcher for target '{}'", target.key);

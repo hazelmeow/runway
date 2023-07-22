@@ -131,6 +131,10 @@ Additional options:
 
 Watches a project for new/changed inputs and runs the sync process automatically.
 
+### `runway codegen`
+
+Reads previous state and generates outputs without syncing.
+
 ### Supported asset types
 
 See the [Open Cloud assets docs](https://create.roblox.com/docs/cloud/open-cloud/usage-assets) for more details.

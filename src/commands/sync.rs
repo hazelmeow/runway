@@ -63,7 +63,7 @@ struct SyncSession {
 }
 
 pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
-    let config_path = match &options.sync_or_watch.config {
+    let config_path = match &options.project.config {
         Some(c) => c.to_owned(),
         None => std::env::current_dir()?,
     };
@@ -71,8 +71,8 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
 
     log::debug!("Loaded config at '{}'", config.file_path.display());
 
-    let Some(target) = config.targets.clone().into_iter().find(|t| t.key == options.sync_or_watch.target) else {
-		return Err(SyncError::UnknownTarget);
+    let Some(target) = config.targets.clone().into_iter().find(|t| t.key == options.project.target) else {
+		return Err(ConfigError::UnknownTarget.into());
 	};
 
     sync_with_config(&options, &config, &target).await
@@ -94,11 +94,11 @@ pub async fn sync_with_config(
             Box::new(LocalSyncStrategy::new(local_path))
         }
         TargetType::Roblox => {
-            let Some(api_key) = &options.sync_or_watch.api_key else {
+            let Some(api_key) = &options.upload.api_key else {
 				return Err(SyncError::MissingApiKey);
 			};
 
-            let Some(creator) = &options.sync_or_watch.creator else {
+            let Some(creator) = &options.upload.creator else {
 				return Err(SyncError::MissingCreator);
 			};
 
@@ -697,9 +697,6 @@ fn generate_asset_hash(content: &[u8]) -> String {
 
 #[derive(Error, Debug)]
 pub enum SyncError {
-    #[error("Unknown target")]
-    UnknownTarget,
-
     #[error("API key is required for Roblox sync targets")]
     MissingApiKey,
 

@@ -36,6 +36,12 @@ async fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             }
         }
+        Subcommand::Codegen(args) => {
+            if let Err(e) = commands::codegen(args).await {
+                log::error!("{}", e);
+                return ExitCode::FAILURE;
+            }
+        }
     };
 
     ExitCode::SUCCESS

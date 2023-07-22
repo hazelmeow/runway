@@ -187,6 +187,9 @@ fn make_absolute(path: &mut PathBuf, base: &Path) {
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    #[error("Unknown target")]
+    UnknownTarget,
+
     #[error("Targets have duplicate keys")]
     DuplicateKeys,
 

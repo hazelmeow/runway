@@ -6,8 +6,8 @@ use thiserror::Error;
 use crate::{
     asset_ident::AssetIdent,
     codegen::typescript::generate_typescript_declaration,
-    config::{CodegenConfig, Config, TargetConfig},
-    state::State,
+    config::{CodegenConfig, Config, ConfigError, TargetConfig},
+    state::{State, StateError},
 };
 
 use self::json::generate_json;
@@ -175,6 +175,18 @@ pub enum CodegenError {
 
     #[error("File structure cannot be serialized")]
     TreeStructure,
+
+    #[error(transparent)]
+    Config {
+        #[from]
+        source: ConfigError,
+    },
+
+    #[error(transparent)]
+    State {
+        #[from]
+        source: StateError,
+    },
 
     #[error(transparent)]
     Io {
