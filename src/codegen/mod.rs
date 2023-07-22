@@ -57,9 +57,13 @@ fn generate_tree(
     let mut root = Value::Object(Object::default());
 
     for (ident, asset) in &state.assets {
-        let Some(target_state) = asset.targets.get(&target.key) else {
-			return Err(CodegenError::MissingAsset { ident: ident.clone() });
-		};
+        let target_state =
+            asset
+                .targets
+                .get(&target.key)
+                .ok_or_else(|| CodegenError::MissingAsset {
+                    ident: ident.clone(),
+                })?;
 
         let mut head = &mut root;
 

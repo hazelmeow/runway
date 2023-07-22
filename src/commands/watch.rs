@@ -97,9 +97,12 @@ pub async fn watch(options: WatchOptions) -> Result<(), WatchError> {
 
     log::debug!("Loaded config at '{}'", config.file_path.display());
 
-    let Some(target) = config.targets.clone().into_iter().find(|t| t.key == options.project.target) else {
-		return Err(ConfigError::UnknownTarget.into());
-	};
+    let target = config
+        .targets
+        .clone()
+        .into_iter()
+        .find(|t| t.key == options.project.target)
+        .ok_or(ConfigError::UnknownTarget)?;
     let target = Arc::new(target);
 
     let sync_options = Arc::new(SyncOptions {

@@ -71,9 +71,12 @@ pub async fn sync(options: SyncOptions) -> Result<(), SyncError> {
 
     log::debug!("Loaded config at '{}'", config.file_path.display());
 
-    let Some(target) = config.targets.clone().into_iter().find(|t| t.key == options.project.target) else {
-		return Err(ConfigError::UnknownTarget.into());
-	};
+    let target = config
+        .targets
+        .clone()
+        .into_iter()
+        .find(|t| t.key == options.project.target)
+        .ok_or(ConfigError::UnknownTarget)?;
 
     sync_with_config(&options, &config, &target).await
 }
