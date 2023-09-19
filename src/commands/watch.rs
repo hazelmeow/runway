@@ -253,9 +253,6 @@ fn get_non_pattern_prefix(glob_path: &Path) -> PathBuf {
 
 #[derive(Error, Debug)]
 pub enum WatchError {
-    #[error("Unknown target")]
-    UnknownTarget,
-
     #[error(transparent)]
     Sync {
         #[from]
