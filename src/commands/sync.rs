@@ -27,27 +27,15 @@ use tokio::time::Instant;
 
 use crate::{
     api::AssetDelivery,
+    asset::Asset,
     asset_ident::{replace_slashes, AssetIdent},
     cli::SyncOptions,
     codegen,
     config::{Config, ConfigError, TargetConfig, TargetType},
+    preprocess::{preprocess, PreprocessError},
     state::{AssetState, State, StateError, TargetState},
     symlink::{symlink_content_folders, SymlinkError},
 };
-
-#[derive(Debug)]
-struct Asset {
-    /// A unique identifier for this asset in the project.
-    ident: AssetIdent,
-
-    path: PathBuf,
-
-    contents: debug_ignore::DebugIgnore<Vec<u8>>,
-
-    hash: String,
-
-    targets: HashMap<String, TargetState>,
-}
 
 struct SyncSession {
     config: Config,
@@ -299,7 +287,7 @@ impl SyncSession {
 									return true
 								}
 							} else {
-								log::trace!("Asset '{}' is does not have last known path, will sync", ident);
+								log::trace!("Asset '{}' is unchanged but does not have last known path, will sync", ident);
 								return true
 							}
 						}
@@ -398,6 +386,9 @@ impl SyncStrategy for LocalSyncStrategy {
 
                 log::debug!("Syncing {}", &ident);
 
+                // Apply preprocessing
+                preprocess(asset)?;
+
                 fs::create_dir_all(local_file_path.parent().unwrap())?;
                 fs::write(&local_file_path, &asset.contents)?;
 
@@ -480,7 +471,10 @@ impl SyncStrategy for RobloxSyncStrategy {
 
             // Map the needs_sync iterator to a collection of futures
             async move {
-                // Loop until we've had too many errors
+				// Apply preprocessing
+				preprocess(asset)?;
+
+				// Loop until we've had too many errors
                 for create_idx in 0..max_create_failures {
                     // If we're retrying, wait a bit first
                     if create_idx > 0 {
@@ -720,6 +714,12 @@ pub enum SyncError {
 
     #[error("Sync finished with {} error(s)", .error_count)]
     HadErrors { error_count: usize },
+
+    #[error(transparent)]
+    Preprocess {
+        #[from]
+        source: PreprocessError,
+    },
 
     #[error(transparent)]
     Config {

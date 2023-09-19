@@ -5,9 +5,11 @@ It maps paths in your project to asset strings
 and supports fast local development or uploads using Open Cloud.
 
 Runway borrows from [Tarmac](https://github.com/rojo-rbx/tarmac)
-but doesn't do any resource compilation (spritesheet packing, alpha bleeding, DPI scaling, etc).
+but doesn't do all of its resource compilation (specifically spritesheet packing and DPI scaling).
 Instead, Runway's inputs/outputs should (ideally) be simple and reliable enough
 to build other tools on top of them.
+
+Runway applies alpha bleeding to all `png` assets that have transparency.
 
 ## Installation
 
@@ -157,3 +159,7 @@ Models haven't been tested yet.
 
 ## License
 Runway is available under the MIT license. See [LICENSE.txt](LICENSE.txt).
+
+Alpha bleeding uses code from the Tarmac source
+([`alpha_bleed.rs`](https://github.com/Roblox/tarmac/blob/ea0d23dc5138d40f7b3de05544a07414416a909a/src/alpha_bleed.rs),
+[`image.rs`](https://github.com/Roblox/tarmac/blob/master/src/image.rs)), licensed under the MIT license.

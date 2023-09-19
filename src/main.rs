@@ -5,11 +5,13 @@ use std::process::ExitCode;
 use clap::Parser;
 
 mod api;
+mod asset;
 mod asset_ident;
 mod cli;
 mod codegen;
 mod commands;
 mod config;
+mod preprocess;
 mod state;
 mod symlink;
 
